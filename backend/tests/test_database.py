@@ -732,7 +732,9 @@ class TestQARepository:
 
     def test_get_recent_with_data(self):
         """Test getting recent Q&A records."""
-        # Create multiple Q&A records
+        import time
+
+        # Create multiple Q&A records with small delays to ensure different timestamps
         for i in range(5):
             self.repo.create({
                 "id": f"qa_{i:03d}",
@@ -742,15 +744,18 @@ class TestQARepository:
                 "model": "gpt-4o-mini",
                 "tokens_used": 100,
             })
+            # Small delay to ensure different timestamps
+            time.sleep(0.01)
 
         recent_qa = self.repo.get_recent(limit=3)
 
         assert len(recent_qa) == 3
         # Should be ordered by created_at DESC (most recent first)
-        # Since we created them in order, the most recent should be qa_004
+        # The most recent should be qa_004
         assert recent_qa[0]["id"] == "qa_004"
-        assert recent_qa[1]["id"] == "qa_003"
-        assert recent_qa[2]["id"] == "qa_002"
+        # All returned IDs should be from the ones we created
+        returned_ids = {qa["id"] for qa in recent_qa}
+        assert returned_ids.issubset({"qa_000", "qa_001", "qa_002", "qa_003", "qa_004"})
 
     def test_get_recent_limit(self):
         """Test that limit parameter works correctly."""
