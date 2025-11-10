@@ -1,0 +1,11 @@
+
+# Environment files
+.env
+
+# Data files
+data/
+*.duckdb
+*.duckdb.wal
+
+# Temporary files
+/backend/check_*.py
