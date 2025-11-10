@@ -25,6 +25,9 @@ branch = True
 # Parallel mode for multiprocessing
 parallel = False
 
+# Use relative file paths for compatibility with GitHub Actions
+relative_files = true
+
 [report]
 # Precision for coverage percentage
 precision = 2
