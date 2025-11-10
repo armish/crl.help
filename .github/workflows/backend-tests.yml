@@ -79,3 +79,4 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           MINIMUM_GREEN: 90
           MINIMUM_ORANGE: 80
+          COVERAGE_PATH: backend
