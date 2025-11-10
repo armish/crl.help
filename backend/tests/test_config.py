@@ -32,26 +32,28 @@ class TestSettings:
         assert settings.app_version == "0.1.0"
         assert settings.api_prefix == "/api"
         assert settings.schedule_hour == 2
-        assert settings.openai_summary_model == "gpt-4o-mini"
+        assert settings.openai_summary_model == "gpt-5-nano"
         assert settings.openai_embedding_model == "text-embedding-3-small"
-        assert settings.openai_qa_model == "gpt-4o-mini"
+        assert settings.openai_qa_model == "gpt-5-nano"
         assert settings.rag_top_k == 5
+        assert settings.ai_dry_run is False  # Default is production mode
+        assert settings.ai_dry_run_summary_chars == 500
 
     def test_openai_api_key_validation_missing(self, test_env_vars):
-        """Test that missing OpenAI API key raises ValidationError."""
+        """Test that missing OpenAI API key uses default when not in dry-run mode."""
         # Remove the API key
         original_key = os.environ.pop("OPENAI_API_KEY", None)
         get_settings.cache_clear()
 
-        with pytest.raises(ValidationError) as exc_info:
-            Settings()
+        # With the new dry-run support, missing API key doesn't raise error
+        # It uses the default dummy key
+        settings = Settings()
+        assert settings.openai_api_key == "sk-dummy-key-for-dry-run-mode"
 
         # Restore the key
         if original_key:
             os.environ["OPENAI_API_KEY"] = original_key
         get_settings.cache_clear()
-
-        assert "openai_api_key" in str(exc_info.value)
 
     def test_openai_api_key_validation_invalid_format(self, test_env_vars):
         """Test that invalid OpenAI API key format raises ValidationError."""
