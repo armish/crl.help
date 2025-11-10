@@ -231,11 +231,10 @@ class TestSettings:
         os.environ.pop("UNKNOWN_FIELD", None)
 
     def test_fda_bulk_urls_defaults(self, test_env_vars):
-        """Test that FDA bulk URLs have correct default values."""
+        """Test that FDA JSON URL has correct default value."""
         settings = get_settings()
 
-        assert settings.fda_bulk_approved_url == "https://download.open.fda.gov/approved_CRLs.zip"
-        assert settings.fda_bulk_unapproved_url == "https://download.open.fda.gov/unapproved_CRLs.zip"
+        assert settings.fda_json_url == "https://download.open.fda.gov/transparency/crl/transparency-crl-0001-of-0001.json.zip"
 
     def test_settings_from_env_file(self, tmp_path):
         """Test that settings can be loaded from .env file."""

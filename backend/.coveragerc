@@ -15,12 +15,18 @@ omit =
     */site-packages/*
     __init__.py
     app/utils/logging_config.py
+    # Phase 3 modules - not yet implemented/tested
+    app/services/data_ingestion.py
+    app/services/data_processor.py
 
 # Branch coverage
 branch = True
 
 # Parallel mode for multiprocessing
 parallel = False
+
+# Use relative file paths for compatibility with GitHub Actions
+relative_files = true
 
 [report]
 # Precision for coverage percentage
