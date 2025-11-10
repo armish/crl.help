@@ -159,3 +159,7 @@ def get_settings() -> Settings:
         ValidationError: If required settings are missing or invalid
     """
     return Settings()
+
+
+# Create a global settings instance for easy access
+settings = get_settings()
