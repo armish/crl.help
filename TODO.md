@@ -267,13 +267,13 @@ crl-app/
 
 ### Phase 1: Foundation & Setup
 
-#### 1.1 Project Initialization
-- [ ] Create project directory structure
-- [ ] Initialize Git repository
-- [ ] Set up `.gitignore` (exclude `.env`, `data/`, `*.duckdb`, `node_modules/`)
-- [ ] Create backend virtual environment
-- [ ] Create `requirements.txt` with initial dependencies
-- [ ] Create `.env.example` template
+#### 1.1 Project Initialization ✅ COMPLETED
+- [x] Create project directory structure
+- [x] Initialize Git repository
+- [x] Set up `.gitignore` (exclude `.env`, `data/`, `*.duckdb`, `node_modules/`)
+- [x] Create backend virtual environment
+- [x] Create `requirements.txt` with initial dependencies
+- [x] Create `.env.example` template
 - [ ] Initialize frontend with Vite + React
 
 **Dependencies (requirements.txt):**
@@ -293,9 +293,9 @@ openpyxl==3.1.2
 numpy==1.26.2
 ```
 
-#### 1.2 Configuration Management
-- [ ] Create `app/config.py` with Pydantic Settings
-- [ ] Define environment variables:
+#### 1.2 Configuration Management ✅ COMPLETED
+- [x] Create `app/config.py` with Pydantic Settings
+- [x] Define environment variables:
   - `OPENAI_API_KEY` (required, never exposed to frontend)
   - `DATABASE_PATH` (default: `./data/crl_explorer.duckdb`)
   - `FDA_BULK_APPROVED_URL`
@@ -303,45 +303,85 @@ numpy==1.26.2
   - `SCHEDULE_HOUR` (default: 2 AM)
   - `LOG_LEVEL` (default: INFO)
   - `CORS_ORIGINS` (allowed frontend origins)
-- [ ] Add validation for required environment variables
-- [ ] Create `.env.example` with placeholder values
+- [x] Add validation for required environment variables
+- [x] Create `.env.example` with placeholder values
 
-#### 1.3 Logging Setup
-- [ ] Create `app/utils/logging_config.py`
-- [ ] Configure structured logging (JSON format)
-- [ ] Set up file rotation
-- [ ] Add request ID tracking for API calls
+#### 1.3 Logging Setup ✅ COMPLETED
+- [x] Create `app/utils/logging_config.py`
+- [x] Configure structured logging (JSON format)
+- [x] Set up file rotation
+- [x] Add request ID tracking for API calls
 
 ---
 
-### Phase 2: Database Layer
+### Phase 2: Database Layer ✅ COMPLETED
 
-#### 2.1 Database Setup
-- [ ] Create `app/database.py` with DuckDB connection manager
-- [ ] Implement connection pooling/singleton pattern
-- [ ] Create `app/schemas.py` with all table definitions (SQL)
-- [ ] Write database initialization function (`init_db()`)
-- [ ] Create indexes for common queries:
+#### 2.1 Database Setup ✅ COMPLETED
+- [x] Create `app/database.py` with DuckDB connection manager
+- [x] Implement connection pooling/singleton pattern
+- [x] Create `app/schemas.py` with all table definitions (SQL)
+- [x] Write database initialization function (`init_db()`)
+- [x] Create indexes for common queries:
   - `approval_status`
   - `letter_year`
   - `company_name`
   - `letter_date`
 
-#### 2.2 Data Access Layer
-- [ ] Create repository pattern classes in `app/database.py`:
+#### 2.2 Data Access Layer ✅ COMPLETED
+- [x] Create repository pattern classes in `app/database.py`:
   - `CRLRepository` (CRUD operations for CRLs)
   - `SummaryRepository`
   - `EmbeddingRepository`
   - `QARepository`
-- [ ] Implement query builders for filtering/sorting
-- [ ] Add pagination support
-- [ ] Write helper functions for vector similarity search
+- [x] Implement query builders for filtering/sorting
+- [x] Add pagination support
+- [x] Write helper functions for vector similarity search
 
 #### 2.3 Database Testing
 - [ ] Create test database setup
 - [ ] Write unit tests for repositories
 - [ ] Test data insertion and retrieval
 - [ ] Verify index performance
+
+---
+
+### Phase 2.5: Testing Infrastructure Setup
+
+#### 2.5.1 Test Framework Setup
+- [ ] Install pytest and pytest-cov
+- [ ] Create pytest.ini configuration file
+- [ ] Set up test directory structure
+- [ ] Configure coverage reporting (HTML, terminal, and XML)
+- [ ] Add pytest-asyncio for async test support
+- [ ] Add pytest-mock for mocking support
+
+#### 2.5.2 Code Coverage Configuration
+- [ ] Set up .coveragerc configuration
+- [ ] Configure minimum coverage thresholds
+- [ ] Set up coverage reports in CI/CD (future)
+- [ ] Add coverage badges to README (future)
+
+#### 2.5.3 Initial Unit Tests
+- [ ] Write tests for `app/config.py` (settings validation)
+- [ ] Write tests for `app/utils/logging_config.py`
+- [ ] Write tests for `app/database.py` (connection management)
+- [ ] Write tests for `app/schemas.py` (table creation)
+- [ ] Achieve >80% coverage for core modules
+
+#### 2.5.4 Test Utilities
+- [ ] Create test fixtures for database connections
+- [ ] Create mock factories for test data
+- [ ] Set up test database (in-memory or temporary)
+- [ ] Create helper functions for common test scenarios
+
+**Testing Dependencies to Add:**
+```
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-asyncio==0.21.1
+pytest-mock==3.12.0
+coverage[toml]==7.3.2
+```
 
 ---
 
@@ -867,12 +907,13 @@ numpy==1.26.2
 
 ## Security Checklist
 
-- [ ] ✅ OpenAI API key stored in environment variable
-- [ ] ✅ API key never exposed to frontend
-- [ ] ✅ API key never logged
-- [ ] ✅ .env file in .gitignore
-- [ ] ✅ CORS restricted to specific origins
-- [ ] ✅ All user inputs validated
+- [x] ✅ OpenAI API key stored in environment variable
+- [x] ✅ API key never exposed to frontend
+- [x] ✅ API key never logged
+- [x] ✅ .env file in .gitignore
+- [x] ✅ Pre-commit hook to prevent accidental secret exposure
+- [x] ✅ CORS restricted to specific origins
+- [x] ✅ All user inputs validated
 - [ ] ✅ No sensitive data in error messages
 - [ ] ✅ HTTPS in production (deployment consideration)
 - [ ] ✅ Rate limiting on API endpoints (optional)

@@ -1,0 +1,79 @@
+# Coverage.py configuration for FDA CRL Explorer
+
+[run]
+# Source code to measure
+source = app
+
+# Omit certain files from coverage
+omit =
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */venv/*
+    */env/*
+    */.venv/*
+    */site-packages/*
+    __init__.py
+    app/utils/logging_config.py
+
+# Branch coverage
+branch = True
+
+# Parallel mode for multiprocessing
+parallel = False
+
+[report]
+# Precision for coverage percentage
+precision = 2
+
+# Show lines that weren't executed
+show_missing = True
+
+# Skip covered files
+skip_covered = False
+
+# Skip empty files
+skip_empty = True
+
+# Fail if coverage is below this threshold
+fail_under = 80
+
+# Exclude certain lines from coverage
+exclude_lines =
+    # Standard pragma
+    pragma: no cover
+
+    # Don't complain about missing debug-only code
+    def __repr__
+    def __str__
+
+    # Don't complain if tests don't hit defensive assertion code
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    if typing.TYPE_CHECKING:
+
+    # Don't complain about abstract methods
+    @abstract
+    @abstractmethod
+
+    # Don't complain about protocol methods
+    \.\.\.
+    pass
+
+# Ignore errors
+ignore_errors = False
+
+[html]
+# Directory for HTML report
+directory = htmlcov
+
+# Title for HTML report
+title = FDA CRL Explorer Coverage Report
+
+[xml]
+# XML report output file
+output = coverage.xml

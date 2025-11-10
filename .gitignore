@@ -54,8 +54,12 @@ logs/
 # Testing
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
+coverage.xml
 .tox/
+*.cover
+.hypothesis/
 
 # Node.js / Frontend
 node_modules/

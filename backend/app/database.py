@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 from contextlib import contextmanager
 
-from app.config import settings
+from app.config import get_settings
 from app.schemas import ALL_TABLES, CREATE_INDEXES
 from app.utils.logging_config import get_logger
 
@@ -42,6 +42,9 @@ class DatabaseConnection:
     def _connect(self) -> None:
         """Establish connection to DuckDB database."""
         try:
+            # Get settings
+            settings = get_settings()
+
             # Ensure data directory exists
             db_path = Path(settings.database_path)
             db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -297,49 +300,21 @@ class CRLRepository:
 
         Returns:
             bool: True if updated, False otherwise
+
+        Note:
+            Due to a DuckDB limitation with updating array columns,
+            this method uses DELETE + INSERT pattern instead of UPDATE.
         """
         if not self.exists(crl_id):
             return False
 
-        raw_json = json.dumps(crl_data.get("raw_json", {}))
+        # Delete existing record
+        self.conn.execute("DELETE FROM crls WHERE id = ?", [crl_id])
 
-        query = """
-        UPDATE crls SET
-            application_number = ?,
-            letter_date = ?,
-            letter_year = ?,
-            letter_type = ?,
-            approval_status = ?,
-            company_name = ?,
-            company_address = ?,
-            company_rep = ?,
-            approver_name = ?,
-            approver_center = ?,
-            approver_title = ?,
-            file_name = ?,
-            text = ?,
-            raw_json = ?::JSON,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-        """
-
-        self.conn.execute(query, [
-            crl_data.get("application_number", []),
-            crl_data.get("letter_date"),
-            crl_data.get("letter_year"),
-            crl_data.get("letter_type"),
-            crl_data.get("approval_status"),
-            crl_data.get("company_name"),
-            crl_data.get("company_address"),
-            crl_data.get("company_rep"),
-            crl_data.get("approver_name"),
-            crl_data.get("approver_center", []),
-            crl_data.get("approver_title"),
-            crl_data.get("file_name"),
-            crl_data.get("text"),
-            raw_json,
-            crl_id,
-        ])
+        # Insert updated record
+        # Ensure id is set correctly
+        crl_data["id"] = crl_id
+        self.create(crl_data)
 
         logger.debug(f"Updated CRL: {crl_id}")
         return True
@@ -530,7 +505,7 @@ class MetadataRepository:
         """Set or update a metadata value."""
         query = """
         INSERT INTO processing_metadata (key, value, updated_at)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
+        VALUES (?, ?, NOW())
         ON CONFLICT (key) DO UPDATE SET
             value = EXCLUDED.value,
             updated_at = NOW()
