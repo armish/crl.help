@@ -31,14 +31,20 @@ class Settings(BaseSettings):
     )
 
     # FDA API Configuration
-    fda_bulk_approved_url: str = Field(
-        default="https://download.open.fda.gov/approved_CRLs.zip",
-        description="URL for approved CRLs bulk download"
+    fda_json_url: str = Field(
+        default="https://download.open.fda.gov/transparency/crl/transparency-crl-0001-of-0001.json.zip",
+        description="URL for CRL JSON data bulk download"
     )
 
-    fda_bulk_unapproved_url: str = Field(
-        default="https://download.open.fda.gov/unapproved_CRLs.zip",
-        description="URL for unapproved CRLs bulk download"
+    # Data storage paths
+    data_raw_dir: str = Field(
+        default="./data/raw",
+        description="Directory for raw downloaded data"
+    )
+
+    data_processed_dir: str = Field(
+        default="./data/processed",
+        description="Directory for processed data"
     )
 
     # Scheduled Task Configuration
