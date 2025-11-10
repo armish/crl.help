@@ -19,8 +19,8 @@ class Settings(BaseSettings):
 
     # OpenAI API Configuration
     openai_api_key: str = Field(
-        ...,
-        description="OpenAI API key for summarization and embeddings. REQUIRED.",
+        default="sk-dummy-key-for-dry-run-mode",
+        description="OpenAI API key for summarization and embeddings. Not required in dry-run mode.",
         min_length=20
     )
 
@@ -86,7 +86,7 @@ class Settings(BaseSettings):
 
     # OpenAI Model Configuration
     openai_summary_model: str = Field(
-        default="gpt-4o-mini",
+        default="gpt-5-nano",
         description="OpenAI model for summarization"
     )
 
@@ -96,8 +96,21 @@ class Settings(BaseSettings):
     )
 
     openai_qa_model: str = Field(
-        default="gpt-4o-mini",
+        default="gpt-5-nano",
         description="OpenAI model for Q&A"
+    )
+
+    # AI Service Configuration
+    ai_dry_run: bool = Field(
+        default=False,
+        description="Enable dry-run mode: generate dummy summaries without API calls (saves costs)"
+    )
+
+    ai_dry_run_summary_chars: int = Field(
+        default=500,
+        ge=100,
+        le=2000,
+        description="Number of characters to use for dummy summaries in dry-run mode"
     )
 
     # RAG Configuration
@@ -130,12 +143,16 @@ class Settings(BaseSettings):
 
     @field_validator("openai_api_key")
     @classmethod
-    def validate_openai_api_key(cls, v: str) -> str:
+    def validate_openai_api_key(cls, v: str, info) -> str:
         """Validate OpenAI API key format."""
+        # Skip validation if in dry-run mode
+        if info.data.get("ai_dry_run", False):
+            return v
+
         if not v.startswith("sk-"):
             raise ValueError(
                 "openai_api_key must start with 'sk-'. "
-                "Please provide a valid OpenAI API key."
+                "Please provide a valid OpenAI API key or enable AI_DRY_RUN mode."
             )
         return v
 
