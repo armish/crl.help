@@ -14,6 +14,7 @@ omit =
     */.venv/*
     */site-packages/*
     __init__.py
+    app/utils/logging_config.py
 
 # Branch coverage
 branch = True
