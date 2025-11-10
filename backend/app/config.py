@@ -153,7 +153,3 @@ def get_settings() -> Settings:
         ValidationError: If required settings are missing or invalid
     """
     return Settings()
-
-
-# Convenience function to get settings
-settings = get_settings()
