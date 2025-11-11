@@ -271,6 +271,192 @@ class TestRAGService:
         assert context in prompt
         assert "CRL" in prompt
 
+    def test_answer_question_empty_raises_error(self, rag_service):
+        """Test that empty question raises error."""
+        with pytest.raises(ValueError, match="cannot be empty"):
+            rag_service.answer_question("")
+
+    def test_answer_question_no_relevant_crls(self, rag_service, monkeypatch):
+        """Test answer_question when no relevant CRLs found."""
+        # Mock _retrieve_similar_crls to return empty list
+        monkeypatch.setattr(
+            rag_service,
+            "_retrieve_similar_crls",
+            lambda query_embedding, top_k: []
+        )
+
+        result = rag_service.answer_question(
+            "What are the common deficiencies?",
+            save_to_db=False
+        )
+
+        assert result["question"] == "What are the common deficiencies?"
+        assert "couldn't find" in result["answer"].lower()
+        assert result["relevant_crls"] == []
+        assert result["confidence"] == 0.0
+
+    def test_answer_question_with_relevant_crls(self, rag_service, monkeypatch):
+        """Test answer_question with relevant CRLs."""
+        # Mock the retrieval to return fake CRLs
+        mock_crls = [
+            ("crl1", 0.85, {
+                "application_number": ["NDA 123456"],
+                "company_name": "Test Pharma",
+                "letter_date": "2023-01-15",
+                "text": "Manufacturing deficiencies were identified."
+            }),
+            ("crl2", 0.75, {
+                "application_number": ["NDA 789012"],
+                "company_name": "Another Pharma",
+                "letter_date": "2023-02-20",
+                "text": "Clinical data was insufficient."
+            })
+        ]
+
+        monkeypatch.setattr(
+            rag_service,
+            "_retrieve_similar_crls",
+            lambda query_embedding, top_k: mock_crls
+        )
+
+        result = rag_service.answer_question(
+            "What are common deficiencies?",
+            top_k=2,
+            save_to_db=False
+        )
+
+        assert result["question"] == "What are common deficiencies?"
+        assert result["answer"] is not None
+        assert len(result["answer"]) > 0
+        assert "[DRY-RUN SUMMARY]" in result["answer"]
+        assert result["relevant_crls"] == ["crl1", "crl2"]
+        assert 0.0 < result["confidence"] <= 1.0
+        assert result["model"] == "gpt-5-nano"
+
+    def test_retrieve_similar_crls_no_embeddings_raises_error(self, rag_service, monkeypatch):
+        """Test _retrieve_similar_crls when no embeddings in database."""
+        # Mock embedding repo to return empty list
+        monkeypatch.setattr(
+            rag_service.embedding_repo,
+            "get_all_embeddings",
+            lambda embedding_type: []
+        )
+
+        query_embedding = [0.1] * 1536
+
+        with pytest.raises(ValueError, match="No CRL embeddings found"):
+            rag_service._retrieve_similar_crls(query_embedding, top_k=5)
+
+    def test_retrieve_similar_crls_success(self, rag_service, monkeypatch):
+        """Test _retrieve_similar_crls successfully retrieves CRLs."""
+        # Mock embedding repo
+        mock_embeddings = [
+            {"crl_id": "crl1", "embedding": [0.9] * 1536},
+            {"crl_id": "crl2", "embedding": [0.5] * 1536},
+            {"crl_id": "crl3", "embedding": [0.1] * 1536},
+        ]
+
+        monkeypatch.setattr(
+            rag_service.embedding_repo,
+            "get_all_embeddings",
+            lambda embedding_type: mock_embeddings
+        )
+
+        # Mock CRL repo to return CRL data
+        def mock_get_by_id(crl_id):
+            return {
+                "id": crl_id,
+                "text": f"Text for {crl_id}",
+                "company_name": "Test Company",
+                "application_number": ["NDA 123"],
+                "letter_date": "2023-01-01"
+            }
+
+        monkeypatch.setattr(
+            rag_service.crl_repo,
+            "get_by_id",
+            mock_get_by_id
+        )
+
+        query_embedding = [0.8] * 1536
+        results = rag_service._retrieve_similar_crls(query_embedding, top_k=2)
+
+        assert len(results) == 2
+        assert all(len(result) == 3 for result in results)  # (id, score, data)
+        assert results[0][0] in ["crl1", "crl2", "crl3"]
+        assert isinstance(results[0][1], float)  # similarity score
+        assert isinstance(results[0][2], dict)  # CRL data
+
+    def test_generate_answer_truncates_long_text(self, rag_service):
+        """Test that _generate_answer truncates very long CRL text."""
+        long_text = "x" * 5000
+        relevant_crls = [
+            ("crl1", 0.9, {
+                "application_number": ["NDA 123"],
+                "company_name": "Test",
+                "letter_date": "2023-01-01",
+                "text": long_text
+            })
+        ]
+
+        answer, crl_ids = rag_service._generate_answer(
+            "What are the issues?",
+            relevant_crls
+        )
+
+        assert answer is not None
+        assert crl_ids == ["crl1"]
+        assert "[DRY-RUN SUMMARY]" in answer
+
+    def test_save_qa(self, rag_service, monkeypatch):
+        """Test _save_qa saves Q&A to database."""
+        saved_record = None
+
+        def mock_create(record):
+            nonlocal saved_record
+            saved_record = record
+
+        monkeypatch.setattr(
+            rag_service.qa_repo,
+            "create",
+            mock_create
+        )
+
+        qa_data = {
+            "question": "Test question?",
+            "answer": "Test answer.",
+            "relevant_crls": ["crl1", "crl2"],
+            "model": "gpt-5-nano"
+        }
+
+        rag_service._save_qa(qa_data)
+
+        assert saved_record is not None
+        assert saved_record["question"] == "Test question?"
+        assert saved_record["answer"] == "Test answer."
+        assert saved_record["relevant_crl_ids"] == ["crl1", "crl2"]
+        assert saved_record["model"] == "gpt-5-nano"
+        assert "id" in saved_record
+
+    def test_get_recent_questions(self, rag_service, monkeypatch):
+        """Test get_recent_questions."""
+        mock_questions = [
+            {"id": "1", "question": "Q1?", "answer": "A1"},
+            {"id": "2", "question": "Q2?", "answer": "A2"},
+        ]
+
+        monkeypatch.setattr(
+            rag_service.qa_repo,
+            "get_recent",
+            lambda limit: mock_questions[:limit]
+        )
+
+        results = rag_service.get_recent_questions(limit=2)
+
+        assert len(results) == 2
+        assert results[0]["question"] == "Q1?"
+        assert results[1]["question"] == "Q2?"
+
 
 class TestAIServicesIntegration:
     """Integration tests for AI services."""
