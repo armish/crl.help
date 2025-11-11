@@ -1,0 +1,55 @@
+# Codecov Configuration for FDA CRL Explorer
+
+# Coverage target configuration
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    # Overall project coverage
+    project:
+      default:
+        target: 80%
+        threshold: 1%
+        if_ci_failed: error
+
+    # Coverage on pull request changes
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+        if_ci_failed: error
+
+# Comment configuration for pull requests
+comment:
+  layout: "reach,diff,flags,tree,files"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+# Ignore paths from coverage
+ignore:
+  - "backend/tests/**/*"
+  - "backend/**/test_*.py"
+  - "**/__pycache__/**"
+  - "**/venv/**"
+  - "**/env/**"
+  - "**/.venv/**"
+  - "**/site-packages/**"
+  - "**/__init__.py"
+  - "backend/app/utils/logging_config.py"
+
+# Flags for different parts of the codebase
+flags:
+  backend:
+    paths:
+      - backend/app/
+    carryforward: true
+
+# CI configuration
+codecov:
+  require_ci_to_pass: yes
+  notify:
+    wait_for_ci: yes

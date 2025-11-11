@@ -58,11 +58,14 @@ jobs:
       - name: Upload coverage reports to Codecov
         if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           file: backend/coverage.xml
           flags: backend
           name: backend-coverage
-          fail_ci_if_error: false
+          fail_ci_if_error: true
+          verbose: true
 
       - name: Upload coverage HTML report as artifact
         if: matrix.python-version == '3.11' && always()
@@ -72,16 +75,3 @@ jobs:
           path: backend/htmlcov/
           retention-days: 30
 
-      # Coverage PR comments disabled temporarily due to path resolution issues
-      # with monorepo structure. Coverage is still tracked via:
-      # 1. Codecov integration (see step above)
-      # 2. HTML coverage report artifacts
-      # 3. Coverage requirements enforced in pytest (--cov-fail-under=80)
-      #
-      # - name: Comment coverage on PR
-      #   if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
-      #   uses: py-cov-action/python-coverage-comment-action@v3
-      #   with:
-      #     GITHUB_TOKEN: ${{ github.token }}
-      #     MINIMUM_GREEN: 90
-      #     MINIMUM_ORANGE: 80
