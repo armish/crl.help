@@ -5,14 +5,24 @@ Utility script to clean up duplicate summaries and embeddings in the database.
 This script removes duplicate entries keeping only the most recent one for each CRL.
 
 Usage:
-    python cleanup_duplicates.py [--dry-run]
+    python cleanup_duplicates.py [options]
 
 Options:
-    --dry-run    Show what would be deleted without actually deleting
+    --dry-run     Show what would be deleted without actually deleting
+    --help, -h    Show this help message and exit
+
+Example:
+    python cleanup_duplicates.py --dry-run   # Preview changes
+    python cleanup_duplicates.py             # Clean up duplicates
 """
 
 import sys
 from pathlib import Path
+
+# Check for help first
+if "--help" in sys.argv or "-h" in sys.argv:
+    print(__doc__)
+    sys.exit(0)
 
 # Add app to Python path
 sys.path.insert(0, str(Path(__file__).parent))

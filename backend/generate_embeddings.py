@@ -31,6 +31,8 @@ Examples:
 
     # Embed full text instead of summaries
     python generate_embeddings.py --embed-full-text
+
+    --help, -h    Show this help message and exit
 """
 
 import asyncio
@@ -39,6 +41,11 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Set
+
+# Check for help first
+if "--help" in sys.argv or "-h" in sys.argv:
+    print(__doc__)
+    sys.exit(0)
 
 # Add app to Python path
 sys.path.insert(0, str(Path(__file__).parent))
