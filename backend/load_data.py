@@ -20,8 +20,10 @@ from app.config import settings
 from app.database import init_db, CRLRepository
 from app.services.data_ingestion import fetch_crl_data
 from app.services.data_processor import process_crl_data
-from app.utils.logging_config import get_logger
+from app.utils.logging_config import get_logger, setup_logging
 
+# Setup logging
+setup_logging(log_level="INFO", enable_file_logging=True)
 logger = get_logger(__name__)
 
 
