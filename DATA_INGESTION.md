@@ -303,17 +303,173 @@ backend/
 - [x] Simple CLI interface for data loading
 - [x] Ready for next phase (AI features, API endpoints, frontend)
 
+## Phase 4.2: AI Summarization Service ✅
+
+We've successfully implemented AI-powered summarization using OpenAI's GPT-5-nano model.
+
+### Key Components
+
+#### 1. OpenAI Client Wrapper (`app/utils/openai_client.py`)
+
+Unified client supporting both GPT-4 and GPT-5 models:
+
+- **GPT-5 models**: Use simplified `responses.create()` API
+- **GPT-4 models**: Use traditional `chat.completions.create()` API
+- **Features**:
+  - Automatic retry logic with exponential backoff (3 attempts)
+  - Dry-run mode for testing without API costs
+  - Comprehensive error handling
+  - Request/response logging
+
+**Key Learning**: GPT-5 models use a completely different API:
+```python
+# GPT-5: simplified responses API
+response = client.responses.create(model="gpt-5-nano", input=text)
+summary = response.output_text
+
+# GPT-4: chat completions API
+response = client.chat.completions.create(model="gpt-4o-mini", messages=[...])
+summary = response.choices[0].message.content
+```
+
+#### 2. Summarization Service (`app/services/summarization.py`)
+
+Generates concise summaries focusing on key deficiencies:
+
+- **Input**: Full CRL text (no truncation - modern models support 128K-400K tokens)
+- **Output**: ~300-word summary highlighting:
+  1. Main deficiencies identified
+  2. Problematic areas (clinical, manufacturing, labeling)
+  3. Required actions from applicant
+- **Model**: GPT-5-nano (fastest, most cost-effective)
+- **Cost**: ~$0.05 per 1M input tokens, $0.40 per 1M output tokens
+
+**Important Fix**: Removed aggressive 8000-character truncation that was:
+- Losing 50%+ of content in many CRLs
+- Missing critical deficiencies mentioned later in letters
+- Causing incomplete summaries
+
+#### 3. Summary Generation Script (`generate_summaries.py`)
+
+Production-ready CLI tool for batch processing:
+
+```bash
+# Incremental mode (default) - only new CRLs
+python generate_summaries.py
+
+# Test with 10 CRLs
+python generate_summaries.py --limit 10
+
+# Regenerate all summaries (use with caution!)
+python generate_summaries.py --regenerate
+
+# Retry failed CRLs
+python generate_summaries.py --retry-failed
+```
+
+**Features**:
+- ✅ **Progress bar** (tqdm) with real-time stats
+- ✅ **Fail-tolerant** - 3 automatic retries per CRL
+- ✅ **Incremental mode** - Only processes new CRLs (perfect for monthly updates)
+- ✅ **Smart behavior** - Requires explicit `--regenerate` to overwrite existing
+- ✅ **Batch size 50** - Aggressive progress reporting
+- ✅ **Failed CRL tracking** - Lists IDs for easy retry
+- ✅ **Keyboard interrupt safe** - Ctrl+C saves progress
+
+### Database Schema
+
+Summaries stored in `crl_summaries` table:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | VARCHAR | Unique summary ID (UUID) |
+| crl_id | VARCHAR | References crls(id) |
+| summary | VARCHAR | AI-generated summary text |
+| model | VARCHAR | Model used (e.g., "gpt-5-nano") |
+| generated_at | TIMESTAMP | Creation timestamp |
+| tokens_used | INTEGER | Token usage (for cost tracking) |
+
+### Usage Workflow
+
+**Initial setup (one-time):**
+```bash
+# Generate summaries for all 783 CRLs
+python generate_summaries.py
+# Estimated time: 25-35 minutes
+# Estimated cost: ~$0.30-0.40
+```
+
+**Monthly updates (incremental):**
+```bash
+# Only processes new CRLs (3-5 per month)
+python generate_summaries.py
+# Estimated time: ~2-3 minutes
+# Estimated cost: ~$0.01
+```
+
+**Handle failures:**
+```bash
+# Retry CRLs that failed or have empty summaries
+python generate_summaries.py --retry-failed
+```
+
+### Example Summary Output
+
+**Input**: 19,672 character CRL (full text, no truncation)
+
+**Output**: 3,642 character summary
+```
+Summary of FDA Complete Response Letter (NDA 210862) for troriluzole (spinocerebellar ataxia)
+
+Main conclusion: The FDA determined that substantial evidence of effectiveness
+has not been established for troriluzole in spinocerebellar ataxia. The
+deficiencies are centered on the clinical data and supporting analyses, with
+no adequate, well-controlled primary evidence.
+
+Key deficiencies and problem areas:
+- Primary evidence is an external-control study (Study 206-RWE) and is not
+  adequate or well-controlled...
+[continues with detailed analysis]
+```
+
+### Success Metrics ✅
+
+- [x] OpenAI client supports both GPT-4 and GPT-5 models
+- [x] No text truncation - full CRL content processed
+- [x] Progress bar with real-time statistics
+- [x] Automatic retry logic (3 attempts per CRL)
+- [x] Incremental mode for monthly updates
+- [x] Safe defaults (no accidental overwrites)
+- [x] Failed CRL tracking and retry capability
+- [x] Cost-effective (~$0.30-0.40 for all 783 CRLs)
+- [x] High-quality summaries focusing on key deficiencies
+
+### Files Created/Modified
+
+```
+backend/
+├── app/
+│   ├── utils/
+│   │   └── openai_client.py         # GPT-4/GPT-5 unified client
+│   └── services/
+│       └── summarization.py         # Summarization service
+├── generate_summaries.py            # CLI tool for batch processing
+├── requirements.txt                 # Added tqdm>=4.66.0
+└── .env                            # OPENAI_SUMMARY_MODEL=gpt-5-nano
+```
+
 ## Next Steps
 
-Now that Phase 3 (Data Ingestion) is complete, we can proceed with:
+Now that Phase 4.2 (AI Summarization) is complete, we can proceed with:
 
-1. **Phase 4:** AI Services (Summarization & Embeddings) - when you're ready
-2. **Phase 5:** RAG Implementation (Q&A with CRL data)
-3. **Phase 7:** Backend API (FastAPI endpoints)
-4. **Phase 8-9:** Frontend (React UI)
+1. **Phase 4.3:** Embedding Service (vector embeddings for RAG)
+2. **Phase 4.4:** Testing (comprehensive tests for AI services)
+3. **Phase 5:** RAG Implementation (Q&A with CRL data)
+4. **Phase 7:** Backend API (FastAPI endpoints)
+5. **Phase 8-9:** Frontend (React UI)
 
-The foundation is solid and all 392 CRLs with their full text content are ready to be used! 🎉
+The foundation is solid and all 783 CRLs are ready for AI-powered summarization! 🎉
 
 ---
 
-*Last Updated: November 10, 2025*
+*Last Updated: November 12, 2025*
