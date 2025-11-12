@@ -6,10 +6,11 @@ Usage:
     python generate_summaries.py [options]
 
 Options:
-    --regenerate    Regenerate summaries for ALL CRLs (including existing ones)
-    --limit N       Process only N CRLs (default: all without summaries)
-    --batch-size N  Progress reporting interval (default: 50)
-    --retry-failed  Retry only CRLs that previously failed
+    --regenerate        Regenerate summaries for ALL CRLs (including existing ones)
+    --limit N           Process only N CRLs (default: all without summaries)
+    --batch-size N      Number of concurrent API calls (default: 10)
+    --retry-failed      Retry only CRLs that previously failed
+    --sequential        Process one at a time (slower, for debugging)
 
 Examples:
     # Generate summaries for new CRLs only (incremental)
@@ -23,8 +24,12 @@ Examples:
 
     # Retry failed CRLs
     python generate_summaries.py --retry-failed
+
+    # Use 20 concurrent API calls (faster)
+    python generate_summaries.py --batch-size 20
 """
 
+import asyncio
 import sys
 import uuid
 from datetime import datetime
@@ -57,9 +62,15 @@ def parse_args():
     args = {
         "regenerate": "--regenerate" in sys.argv,
         "retry_failed": "--retry-failed" in sys.argv,
+        "sequential": "--sequential" in sys.argv,
         "limit": None,
-        "batch_size": 50,  # Default batch size for progress reporting
+        "batch_size": 10,  # Default concurrent API calls
     }
+
+    # Validate mutually exclusive options
+    if args["regenerate"] and args["retry_failed"]:
+        logger.warning("Both --regenerate and --retry-failed specified. Using --regenerate.")
+        args["retry_failed"] = False
 
     # Parse --limit
     if "--limit" in sys.argv:
@@ -159,22 +170,96 @@ def get_crls_needing_summaries(
         return crls_needing_summaries
 
 
-def generate_summaries(
+async def process_single_crl(
+    crl: Dict[str, Any],
+    summary_service: SummarizationService,
+    summary_repo: SummaryRepository,
+    semaphore: asyncio.Semaphore,
+    max_retries: int = 3
+) -> Dict[str, Any]:
+    """
+    Process a single CRL asynchronously with retry logic.
+
+    Args:
+        crl: CRL dictionary
+        summary_service: Summarization service
+        summary_repo: Summary repository
+        semaphore: Semaphore to limit concurrent requests
+        max_retries: Maximum retry attempts
+
+    Returns:
+        Dict with status and details
+    """
+    crl_id = crl["id"]
+    crl_text = crl.get("text", "")
+
+    # Skip CRLs with no text
+    if not crl_text or not crl_text.strip():
+        return {"status": "skipped", "crl_id": crl_id, "reason": "no text"}
+
+    # Use semaphore to limit concurrent API calls
+    async with semaphore:
+        for attempt in range(max_retries):
+            try:
+                # Generate summary (synchronous call wrapped in executor)
+                loop = asyncio.get_event_loop()
+                summary_text = await loop.run_in_executor(
+                    None,
+                    summary_service.summarize_crl,
+                    crl_text,
+                    300  # max_summary_length
+                )
+
+                # Validate summary
+                if not summary_text or len(summary_text.strip()) < 50:
+                    raise ValueError(f"Summary too short ({len(summary_text)} chars)")
+
+                # Store summary
+                summary_data = {
+                    "id": str(uuid.uuid4()),
+                    "crl_id": crl_id,
+                    "summary": summary_text,
+                    "model": settings.openai_summary_model,
+                    "tokens_used": 0,
+                }
+
+                summary_repo.create(summary_data)
+
+                return {
+                    "status": "success",
+                    "crl_id": crl_id,
+                    "attempt": attempt + 1
+                }
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    # Wait briefly before retry
+                    await asyncio.sleep(1)
+                    continue
+                else:
+                    return {
+                        "status": "failed",
+                        "crl_id": crl_id,
+                        "error": str(e)[:100]
+                    }
+
+
+async def generate_summaries_async(
     crls: List[Dict[str, Any]],
     summary_service: SummarizationService,
     summary_repo: SummaryRepository,
-    batch_size: int = 50,
+    batch_size: int = 10,
     max_retries: int = 3
 ) -> Dict[str, int]:
     """
-    Generate and store summaries for CRLs with progress bar and retry logic.
+    Generate and store summaries for CRLs concurrently.
 
     Args:
         crls: List of CRL dictionaries
         summary_service: Summarization service
         summary_repo: Summary repository
-        batch_size: Progress reporting interval
-        max_retries: Maximum retry attempts for failed CRLs
+        batch_size: Number of concurrent API calls
+        max_retries: Maximum retry attempts per CRL
 
     Returns:
         Statistics dictionary with success/failure counts
@@ -189,91 +274,170 @@ def generate_summaries(
 
     failed_crls: Set[str] = set()
 
-    logger.info(f"Starting summarization of {len(crls)} CRLs...")
-    logger.info(f"Progress reporting interval: {batch_size} CRLs")
+    logger.info(f"Starting concurrent summarization of {len(crls)} CRLs...")
+    logger.info(f"Concurrent API calls: {batch_size}")
     logger.info(f"Max retries per CRL: {max_retries}")
 
+    # Create semaphore to limit concurrent requests
+    semaphore = asyncio.Semaphore(batch_size)
+
     # Create progress bar if tqdm is available
+    if HAS_TQDM:
+        pbar = tqdm(total=len(crls), desc="Generating summaries", unit="CRL")
+
+    # Process all CRLs concurrently
+    tasks = [
+        process_single_crl(crl, summary_service, summary_repo, semaphore, max_retries)
+        for crl in crls
+    ]
+
+    # Gather results as they complete
+    for coro in asyncio.as_completed(tasks):
+        result = await coro
+
+        # Update stats based on result
+        if result["status"] == "success":
+            stats["success"] += 1
+            if result["attempt"] > 1:
+                stats["retried"] += 1
+                if HAS_TQDM:
+                    tqdm.write(f"✓ {result['crl_id']} (retry {result['attempt']})")
+        elif result["status"] == "failed":
+            stats["failed"] += 1
+            failed_crls.add(result["crl_id"])
+            if HAS_TQDM:
+                tqdm.write(f"✗ {result['crl_id']}: {result.get('error', 'Unknown error')}")
+            else:
+                logger.error(f"Failed: {result['crl_id']}: {result.get('error')}")
+        elif result["status"] == "skipped":
+            stats["skipped"] += 1
+            if HAS_TQDM:
+                tqdm.write(f"⊘ {result['crl_id']}: {result.get('reason')}")
+
+        # Update progress bar
+        if HAS_TQDM:
+            pbar.update(1)
+            pbar.set_postfix({
+                "✓": stats["success"],
+                "✗": stats["failed"],
+                "⊘": stats["skipped"]
+            })
+
+    if HAS_TQDM:
+        pbar.close()
+
+    # Log failed CRLs
+    if failed_crls:
+        logger.warning(f"\nFailed CRL IDs ({len(failed_crls)}):")
+        for crl_id in sorted(failed_crls):
+            logger.warning(f"  - {crl_id}")
+        logger.info(f"\nTo retry failures, run: python generate_summaries.py --retry-failed")
+
+    return stats
+
+
+def generate_summaries(
+    crls: List[Dict[str, Any]],
+    summary_service: SummarizationService,
+    summary_repo: SummaryRepository,
+    batch_size: int = 10,
+    max_retries: int = 3,
+    sequential: bool = False
+) -> Dict[str, int]:
+    """
+    Generate and store summaries for CRLs (concurrent or sequential).
+
+    Args:
+        crls: List of CRL dictionaries
+        summary_service: Summarization service
+        summary_repo: Summary repository
+        batch_size: Number of concurrent API calls (ignored if sequential=True)
+        max_retries: Maximum retry attempts for failed CRLs
+        sequential: If True, process one at a time (slower, for debugging)
+
+    Returns:
+        Statistics dictionary with success/failure counts
+    """
+    if sequential:
+        # Use old sequential implementation for debugging
+        logger.info("Running in SEQUENTIAL mode (slower)")
+        return _generate_summaries_sequential(
+            crls, summary_service, summary_repo, max_retries
+        )
+    else:
+        # Use new async concurrent implementation (default)
+        logger.info("Running in CONCURRENT mode (faster)")
+        return asyncio.run(generate_summaries_async(
+            crls, summary_service, summary_repo, batch_size, max_retries
+        ))
+
+
+def _generate_summaries_sequential(
+    crls: List[Dict[str, Any]],
+    summary_service: SummarizationService,
+    summary_repo: SummaryRepository,
+    max_retries: int = 3
+) -> Dict[str, int]:
+    """Sequential implementation (for debugging)."""
+    stats = {
+        "total": len(crls),
+        "success": 0,
+        "failed": 0,
+        "skipped": 0,
+        "retried": 0,
+    }
+
+    failed_crls: Set[str] = set()
     iterator = tqdm(crls, desc="Generating summaries", unit="CRL") if HAS_TQDM else crls
 
     for crl in iterator:
         crl_id = crl["id"]
         crl_text = crl.get("text", "")
 
-        # Skip CRLs with no text
         if not crl_text or not crl_text.strip():
             if HAS_TQDM:
-                tqdm.write(f"⊘ Skipping {crl_id}: no text content")
-            else:
-                logger.warning(f"Skipping CRL {crl_id}: no text content")
+                tqdm.write(f"⊘ {crl_id}: no text")
             stats["skipped"] += 1
             continue
 
-        # Try to generate summary with retries
-        success = False
         for attempt in range(max_retries):
             try:
-                # Generate summary
-                summary_text = summary_service.summarize_crl(
-                    crl_text,
-                    max_summary_length=300
-                )
+                summary_text = summary_service.summarize_crl(crl_text, max_summary_length=300)
 
-                # Validate summary is not empty
                 if not summary_text or len(summary_text.strip()) < 50:
-                    raise ValueError(f"Generated summary is too short ({len(summary_text)} chars)")
+                    raise ValueError(f"Summary too short ({len(summary_text)} chars)")
 
-                # Store summary
                 summary_data = {
                     "id": str(uuid.uuid4()),
                     "crl_id": crl_id,
                     "summary": summary_text,
                     "model": settings.openai_summary_model,
-                    "tokens_used": 0,  # Could be enhanced to track actual tokens
+                    "tokens_used": 0,
                 }
 
                 summary_repo.create(summary_data)
                 stats["success"] += 1
-                success = True
 
                 if attempt > 0:
                     stats["retried"] += 1
-                    if HAS_TQDM:
-                        tqdm.write(f"✓ {crl_id} (succeeded on retry {attempt + 1})")
-
-                break  # Success, exit retry loop
+                break
 
             except Exception as e:
                 if attempt < max_retries - 1:
-                    # Log retry attempt
-                    if HAS_TQDM:
-                        tqdm.write(f"⟳ {crl_id}: Retry {attempt + 1}/{max_retries - 1} after error: {str(e)[:100]}")
-                    else:
-                        logger.warning(f"Retry {attempt + 1} for CRL {crl_id}: {e}")
                     continue
                 else:
-                    # Final failure after all retries
                     failed_crls.add(crl_id)
                     stats["failed"] += 1
                     if HAS_TQDM:
-                        tqdm.write(f"✗ {crl_id}: Failed after {max_retries} attempts: {str(e)[:100]}")
-                    else:
-                        logger.error(f"Failed to generate summary for CRL {crl_id} after {max_retries} attempts: {e}")
+                        tqdm.write(f"✗ {crl_id}: {str(e)[:100]}")
 
-        # Update progress bar description with stats
         if HAS_TQDM:
-            iterator.set_postfix({
-                "✓": stats["success"],
-                "✗": stats["failed"],
-                "⊘": stats["skipped"]
-            })
+            iterator.set_postfix({"✓": stats["success"], "✗": stats["failed"], "⊘": stats["skipped"]})
 
-    # Log failed CRLs for easy retry
     if failed_crls:
         logger.warning(f"\nFailed CRL IDs ({len(failed_crls)}):")
         for crl_id in sorted(failed_crls):
             logger.warning(f"  - {crl_id}")
-        logger.info(f"\nTo retry failures, run: python generate_summaries.py --retry-failed")
 
     return stats
 
@@ -296,7 +460,10 @@ def main():
             logger.info("Mode: INCREMENTAL (only new CRLs without summaries)")
 
         logger.info(f"Limit: {args['limit'] or 'No limit'}")
-        logger.info(f"Progress interval: {args['batch_size']} CRLs")
+        if args['sequential']:
+            logger.info("Mode: Sequential processing (1 at a time, for debugging)")
+        else:
+            logger.info(f"Concurrent API calls: {args['batch_size']}")
 
         # Initialize database
         logger.info("\n[Step 1/3] Initializing database...")
@@ -343,7 +510,8 @@ def main():
             crls,
             summary_service,
             summary_repo,
-            batch_size=args["batch_size"]
+            batch_size=args["batch_size"],
+            sequential=args["sequential"]
         )
 
         # Display results
