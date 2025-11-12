@@ -68,6 +68,9 @@ class SummarizationService:
                     "You are an expert in pharmaceutical regulatory affairs, "
                     "specializing in analyzing FDA Complete Response Letters. "
                     "Your summaries are clear, concise, and highlight key deficiencies."
+                    "You one-paragraph summary will be read by an executive who wants "
+                    "to extract learnings and cautions for future submissions. "
+                    "Answer in markdown format. No headers."
                 )
             },
             {
@@ -84,7 +87,7 @@ class SummarizationService:
                 max_tokens=max_summary_length * 2  # Rough estimate: 1 word ≈ 1.5 tokens
             )
 
-            logger.info(
+            logger.debug(
                 f"Generated summary: {len(summary)} chars "
                 f"(dry_run={self.settings.ai_dry_run})"
             )
