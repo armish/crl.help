@@ -55,17 +55,10 @@ class SummarizationService:
         if not crl_text or not crl_text.strip():
             raise ValueError("CRL text cannot be empty")
 
-        # Truncate very long texts to save tokens (keep first ~8000 chars)
-        if len(crl_text) > 8000:
-            truncated_text = crl_text[:8000] + "...[truncated]"
-            logger.warning(
-                f"CRL text truncated from {len(crl_text)} to 8000 chars for summarization"
-            )
-        else:
-            truncated_text = crl_text
-
-        # Create the prompt
-        prompt = self._create_summary_prompt(truncated_text, max_summary_length)
+        # Create the prompt with full text
+        # Modern models (GPT-5, GPT-4o) support 128K-400K token contexts,
+        # so we don't need to truncate CRLs (typically 5K-50K chars / 1K-15K tokens)
+        prompt = self._create_summary_prompt(crl_text, max_summary_length)
 
         # Generate summary
         messages = [
