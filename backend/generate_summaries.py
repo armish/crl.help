@@ -214,6 +214,12 @@ async def process_single_crl(
                 if not summary_text or len(summary_text.strip()) < 50:
                     raise ValueError(f"Summary too short ({len(summary_text)} chars)")
 
+                # Delete any existing summaries for this CRL to avoid duplicates
+                summary_repo.conn.execute(
+                    "DELETE FROM crl_summaries WHERE crl_id = ?",
+                    [crl_id]
+                )
+
                 # Store summary
                 summary_data = {
                     "id": str(uuid.uuid4()),
@@ -406,6 +412,12 @@ def _generate_summaries_sequential(
 
                 if not summary_text or len(summary_text.strip()) < 50:
                     raise ValueError(f"Summary too short ({len(summary_text)} chars)")
+
+                # Delete any existing summaries for this CRL to avoid duplicates
+                summary_repo.conn.execute(
+                    "DELETE FROM crl_summaries WHERE crl_id = ?",
+                    [crl_id]
+                )
 
                 summary_data = {
                     "id": str(uuid.uuid4()),

@@ -154,10 +154,17 @@ def get_crls_needing_embeddings(
 
     else:
         logger.info("Embedding mode: SUMMARIES")
-        # Get all summaries
-        all_summaries = summary_repo.conn.execute(
-            "SELECT crl_id, summary FROM crl_summaries ORDER BY generated_at DESC"
-        ).fetchall()
+        # Get all summaries (use DISTINCT to avoid duplicates from regeneration)
+        all_summaries = summary_repo.conn.execute("""
+            SELECT crl_id, summary
+            FROM (
+                SELECT crl_id, summary, generated_at,
+                       ROW_NUMBER() OVER (PARTITION BY crl_id ORDER BY generated_at DESC) as rn
+                FROM crl_summaries
+            )
+            WHERE rn = 1
+            ORDER BY generated_at DESC
+        """).fetchall()
 
         all_crls = [
             {
