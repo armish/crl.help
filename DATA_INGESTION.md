@@ -468,8 +468,9 @@ We've successfully implemented vector embedding generation for RAG (Retrieval-Au
 
 Generates dense vector representations for semantic search:
 
-- **Model**: `text-embedding-3-small` (1536 dimensions)
-- **Cost**: $0.02 per 1M tokens (very affordable)
+- **Model**: `text-embedding-3-large` (3072 dimensions)
+- **Performance**: 64.6% on MTEB benchmark (vs 62.3% for -small)
+- **Cost**: $0.02 per 1M tokens
 - **Speed**: ~0.5-1 second per embedding
 - **Features**:
   - Single and batch embedding generation
@@ -515,8 +516,8 @@ Embeddings stored in `crl_embeddings` table:
 | id | VARCHAR | Unique embedding ID (UUID) |
 | crl_id | VARCHAR | References crls(id) |
 | embedding_type | VARCHAR | "summary" or "full_text" |
-| embedding | FLOAT[] | Vector embedding (1536 dims) |
-| model | VARCHAR | Model used (e.g., "text-embedding-3-small") |
+| embedding | FLOAT[] | Vector embedding (3072 dims) |
+| model | VARCHAR | Model used (e.g., "text-embedding-3-large") |
 | generated_at | TIMESTAMP | Creation timestamp |
 
 ### Why Embed Summaries vs Full Text?
@@ -551,7 +552,7 @@ python generate_summaries.py
 python generate_embeddings.py
 
 # Expected time: ~4-8 minutes for 783 summaries
-# Expected cost: ~$0.05-0.10
+# Expected cost: ~$0.30-0.35 (using text-embedding-3-large for better quality)
 ```
 
 **Monthly updates (incremental):**
@@ -574,15 +575,16 @@ python generate_embeddings.py
 - **Total time for 783 embeddings**: ~4-8 minutes ⚡
 
 **Cost**:
-- Model: text-embedding-3-small
-- Price: $0.02 per 1M tokens
+- Model: text-embedding-3-large
+- Price: $0.02 per 1M tokens (same as -small)
 - Average summary: ~250 tokens
-- **Total cost for 783 summaries**: ~$0.05 💰
+- **Total cost for 783 summaries**: ~$0.32 💰
+- Why the upgrade? Better semantic understanding (64.6% vs 62.3% MTEB) for only $0.27 more
 
 **Storage**:
-- 1536-dimensional float vectors
-- ~6 KB per embedding
-- **Total database size for 783**: ~4.5 MB
+- 3072-dimensional float vectors
+- ~12 KB per embedding (2x larger than -small)
+- **Total database size for 783**: ~9 MB
 
 ### Example Usage in RAG
 

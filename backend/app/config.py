@@ -91,8 +91,8 @@ class Settings(BaseSettings):
     )
 
     openai_embedding_model: str = Field(
-        default="text-embedding-3-small",
-        description="OpenAI model for embeddings"
+        default="text-embedding-3-large",
+        description="OpenAI model for embeddings (text-embedding-3-large: 64.6% MTEB, 3072 dims)"
     )
 
     openai_qa_model: str = Field(

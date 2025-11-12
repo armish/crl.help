@@ -156,9 +156,11 @@ class OpenAIClient:
             model = self.settings.openai_embedding_model
 
         if self.dry_run:
-            # Return a dummy embedding vector (1536 dimensions for text-embedding-3-small)
-            dummy_embedding = [0.0] * 1536
-            logger.debug("DRY-RUN: Generated dummy embedding vector (1536 dims)")
+            # Return a dummy embedding vector
+            # text-embedding-3-small: 1536 dims, text-embedding-3-large: 3072 dims
+            dims = 3072 if "large" in model else 1536
+            dummy_embedding = [0.0] * dims
+            logger.debug(f"DRY-RUN: Generated dummy embedding vector ({dims} dims)")
             return dummy_embedding
 
         try:
