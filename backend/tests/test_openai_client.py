@@ -69,10 +69,10 @@ class TestOpenAIClientDryRun:
 
         embedding = dry_run_client.create_embedding(text)
 
-        # Should return dummy embedding
+        # Should return dummy embedding (default is text-embedding-3-large = 3072 dims)
         assert embedding is not None
         assert isinstance(embedding, list)
-        assert len(embedding) == 1536  # Standard dimension
+        assert len(embedding) == 3072  # text-embedding-3-large dimension
         assert all(isinstance(x, float) for x in embedding)
         assert all(x == 0.0 for x in embedding)  # All zeros in dry-run
 
@@ -134,6 +134,90 @@ class TestOpenAIClientConfiguration:
         assert client_real.client is not None
 
 
+class TestOpenAIClientGPT5Support:
+    """Test GPT-5 API support."""
+
+    def test_gpt5_chat_completion_dry_run(self, dry_run_client):
+        """Test that GPT-5 models work in dry-run mode."""
+        messages = [
+            {"role": "user", "content": "Summarize this CRL document."}
+        ]
+
+        response = dry_run_client.create_chat_completion(
+            model="gpt-5-nano",
+            messages=messages
+        )
+
+        assert response is not None
+        assert isinstance(response, str)
+        assert "[DRY-RUN SUMMARY]" in response
+
+    def test_gpt4_chat_completion_dry_run(self, dry_run_client):
+        """Test that GPT-4 models still work in dry-run mode."""
+        messages = [
+            {"role": "user", "content": "Summarize this CRL document."}
+        ]
+
+        response = dry_run_client.create_chat_completion(
+            model="gpt-4o-mini",
+            messages=messages
+        )
+
+        assert response is not None
+        assert isinstance(response, str)
+        assert "[DRY-RUN SUMMARY]" in response
+
+
+class TestOpenAIClientDynamicDimensions:
+    """Test dynamic embedding dimensions for different models."""
+
+    def test_embedding_large_model_3072_dims(self, dry_run_settings):
+        """Test that text-embedding-3-large returns 3072 dimensions."""
+        settings = Settings(
+            openai_api_key="sk-dummy-key-for-testing-purposes",
+            ai_dry_run=True,
+            openai_embedding_model="text-embedding-3-large"
+        )
+        client = OpenAIClient(settings)
+
+        embedding = client.create_embedding("test text")
+
+        assert len(embedding) == 3072
+
+    def test_embedding_small_model_1536_dims(self, dry_run_settings):
+        """Test that text-embedding-3-small returns 1536 dimensions."""
+        settings = Settings(
+            openai_api_key="sk-dummy-key-for-testing-purposes",
+            ai_dry_run=True,
+            openai_embedding_model="text-embedding-3-small"
+        )
+        client = OpenAIClient(settings)
+
+        embedding = client.create_embedding("test text")
+
+        assert len(embedding) == 1536
+
+    def test_embedding_explicit_model_parameter(self, dry_run_client):
+        """Test that explicit model parameter overrides default."""
+        # Default is text-embedding-3-large (3072 dims)
+        embedding_default = dry_run_client.create_embedding("test text")
+        assert len(embedding_default) == 3072
+
+        # Explicitly use small model
+        embedding_small = dry_run_client.create_embedding(
+            "test text",
+            model="text-embedding-3-small"
+        )
+        assert len(embedding_small) == 1536
+
+        # Explicitly use large model
+        embedding_large = dry_run_client.create_embedding(
+            "test text",
+            model="text-embedding-3-large"
+        )
+        assert len(embedding_large) == 3072
+
+
 class TestOpenAIClientErrorHandling:
     """Test error handling in OpenAI client."""
 
@@ -143,4 +227,4 @@ class TestOpenAIClientErrorHandling:
         # but the client should work with any input in dry-run mode
         embedding = dry_run_client.create_embedding("")
         assert isinstance(embedding, list)
-        assert len(embedding) == 1536
+        assert len(embedding) == 3072  # Default is text-embedding-3-large

@@ -17,7 +17,8 @@ def dry_run_settings():
         ai_dry_run=True,
         ai_dry_run_summary_chars=500,
         openai_summary_model="gpt-5-nano",
-        openai_qa_model="gpt-5-nano"
+        openai_qa_model="gpt-5-nano",
+        openai_embedding_model="text-embedding-3-large"  # 3072 dims
     )
 
 
@@ -63,14 +64,17 @@ class TestSummarizationService:
         with pytest.raises(ValueError, match="cannot be empty"):
             summarization_service.summarize_crl("")
 
-    def test_summarize_truncates_long_text(self, summarization_service):
-        """Test that very long texts are truncated."""
-        long_text = "x" * 10000
+    def test_summarize_very_long_text(self, summarization_service):
+        """Test that very long texts are handled (no truncation in modern models)."""
+        # Modern models (GPT-5, GPT-4o) support 128K-400K token contexts
+        # CRLs are typically 5K-50K chars (1K-15K tokens), so no truncation needed
+        long_text = "x" * 50000  # ~50K chars, ~15K tokens
         summary = summarization_service.summarize_crl(long_text)
 
-        # Should still work despite truncation
+        # Should work without truncation
         assert summary is not None
         assert isinstance(summary, str)
+        assert "[DRY-RUN SUMMARY]" in summary
 
     def test_batch_summarize(self, summarization_service):
         """Test batch summarization."""
@@ -121,7 +125,7 @@ class TestEmbeddingsService:
 
         assert embedding is not None
         assert isinstance(embedding, list)
-        assert len(embedding) == 1536
+        assert len(embedding) == 3072  # text-embedding-3-large
         assert all(isinstance(x, float) for x in embedding)
 
     def test_generate_embedding_empty_text_raises_error(self, embeddings_service):
@@ -136,7 +140,7 @@ class TestEmbeddingsService:
 
         # Should still work despite truncation
         assert embedding is not None
-        assert len(embedding) == 1536
+        assert len(embedding) == 3072  # text-embedding-3-large
 
     def test_batch_generate_embeddings(self, embeddings_service):
         """Test batch embedding generation."""
@@ -152,7 +156,7 @@ class TestEmbeddingsService:
         for doc_id, embedding, error in results:
             assert doc_id in ["doc1", "doc2", "doc3"]
             assert embedding is not None
-            assert len(embedding) == 1536
+            assert len(embedding) == 3072  # text-embedding-3-large
             assert error is None
 
     def test_batch_generate_embeddings_handles_errors(self, embeddings_service):
@@ -183,7 +187,7 @@ class TestEmbeddingsService:
         embedding = embeddings_service.generate_query_embedding(query)
 
         assert embedding is not None
-        assert len(embedding) == 1536
+        assert len(embedding) == 3072  # text-embedding-3-large
 
     def test_generate_query_embedding_empty_raises_error(self, embeddings_service):
         """Test that empty query raises error."""
@@ -201,7 +205,7 @@ class TestEmbeddingsService:
         combined = embeddings_service.generate_combined_embedding(texts)
 
         assert combined is not None
-        assert len(combined) == 1536
+        assert len(combined) == 3072  # text-embedding-3-large
 
     def test_generate_combined_embedding_with_weights(self, embeddings_service):
         """Test combined embedding with custom weights."""
@@ -211,7 +215,7 @@ class TestEmbeddingsService:
         combined = embeddings_service.generate_combined_embedding(texts, weights)
 
         assert combined is not None
-        assert len(combined) == 1536
+        assert len(combined) == 3072  # text-embedding-3-large
 
     def test_generate_combined_embedding_invalid_weights(self, embeddings_service):
         """Test that invalid weights raise error."""
@@ -342,7 +346,7 @@ class TestRAGService:
             lambda embedding_type: []
         )
 
-        query_embedding = [0.1] * 1536
+        query_embedding = [0.1] * 3072  # text-embedding-3-large
 
         with pytest.raises(ValueError, match="No CRL embeddings found"):
             rag_service._retrieve_similar_crls(query_embedding, top_k=5)
@@ -351,9 +355,9 @@ class TestRAGService:
         """Test _retrieve_similar_crls successfully retrieves CRLs."""
         # Mock embedding repo
         mock_embeddings = [
-            {"crl_id": "crl1", "embedding": [0.9] * 1536},
-            {"crl_id": "crl2", "embedding": [0.5] * 1536},
-            {"crl_id": "crl3", "embedding": [0.1] * 1536},
+            {"crl_id": "crl1", "embedding": [0.9] * 3072},
+            {"crl_id": "crl2", "embedding": [0.5] * 3072},
+            {"crl_id": "crl3", "embedding": [0.1] * 3072},
         ]
 
         monkeypatch.setattr(
@@ -378,7 +382,7 @@ class TestRAGService:
             mock_get_by_id
         )
 
-        query_embedding = [0.8] * 1536
+        query_embedding = [0.8] * 3072  # text-embedding-3-large
         results = rag_service._retrieve_similar_crls(query_embedding, top_k=2)
 
         assert len(results) == 2
@@ -477,7 +481,7 @@ class TestAIServicesIntegration:
         # Generate embedding of summary
         embedding = embeddings_service.generate_embedding(summary)
         assert embedding is not None
-        assert len(embedding) == 1536
+        assert len(embedding) == 3072  # text-embedding-3-large
 
     def test_dry_run_mode_saves_costs(self, dry_run_settings):
         """Test that dry-run mode doesn't make API calls."""

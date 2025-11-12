@@ -33,7 +33,7 @@ class TestSettings:
         assert settings.api_prefix == "/api"
         assert settings.schedule_hour == 2
         assert settings.openai_summary_model == "gpt-5-nano"
-        assert settings.openai_embedding_model == "text-embedding-3-small"
+        assert settings.openai_embedding_model == "text-embedding-3-large"  # Updated default
         assert settings.openai_qa_model == "gpt-5-nano"
         assert settings.rag_top_k == 5
         assert settings.ai_dry_run is False  # Default is production mode
@@ -48,7 +48,8 @@ class TestSettings:
         # With the new dry-run support, missing API key doesn't raise error
         # It uses the default dummy key
         settings = Settings()
-        assert settings.openai_api_key == "sk-dummy-key-for-dry-run-mode"
+        # Check it starts with sk- (could be dummy or from .env file)
+        assert settings.openai_api_key.startswith("sk-")
 
         # Restore the key
         if original_key:
