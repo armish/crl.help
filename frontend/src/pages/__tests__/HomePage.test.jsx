@@ -19,6 +19,38 @@ import * as queries from '../../services/queries';
 vi.mock('../../services/queries', () => ({
   useStats: vi.fn(),
   useCompanies: vi.fn(),
+  useCRLs: vi.fn(),
+}));
+
+// Mock the filterStore module
+vi.mock('../../store/filterStore', () => ({
+  default: vi.fn(() => ({
+    filters: {
+      approval_status: [],
+      letter_year: [],
+      letter_type: [],
+      company_name: [],
+      search_text: '',
+    },
+    sort: {
+      sort_by: 'letter_date',
+      sort_order: 'DESC',
+    },
+    pagination: {
+      limit: 10,
+      offset: 0,
+    },
+    setFilter: vi.fn(),
+    clearFilters: vi.fn(),
+    setSort: vi.fn(),
+    setPagination: vi.fn(),
+  })),
+  useQueryParams: vi.fn(() => ({
+    sort_by: 'letter_date',
+    sort_order: 'DESC',
+    limit: 10,
+    offset: 0,
+  })),
 }));
 
 describe('HomePage', () => {
@@ -26,6 +58,13 @@ describe('HomePage', () => {
     // Default mock for useCompanies
     queries.useCompanies.mockReturnValue({
       data: [],
+      isLoading: false,
+      error: null,
+    });
+
+    // Default mock for useCRLs
+    queries.useCRLs.mockReturnValue({
+      data: { items: [], total: 0 },
       isLoading: false,
       error: null,
     });
@@ -103,10 +142,10 @@ describe('HomePage', () => {
         Approved: 300,
         Unapproved: 230,
       },
-      by_year: {
-        '2023': 150,
-        '2022': 200,
-        '2021': 180,
+      by_year_and_status: {
+        '2023': { Approved: 100, Unapproved: 50 },
+        '2022': { Approved: 120, Unapproved: 80 },
+        '2021': { Approved: 80, Unapproved: 100 },
       },
     };
 
@@ -134,7 +173,7 @@ describe('HomePage', () => {
         Approved: 60,
         Unapproved: 40,
       },
-      by_year: {},
+      by_year_and_status: {},
     };
 
     queries.useStats.mockReturnValue({
@@ -148,7 +187,7 @@ describe('HomePage', () => {
     expect(screen.queryByText(/crls by year/i)).not.toBeInTheDocument();
   });
 
-  it('displays placeholder for CRL table', () => {
+  it('displays CRL table section', () => {
     const mockStats = {
       total_crls: 100,
       by_status: {
@@ -164,12 +203,17 @@ describe('HomePage', () => {
       error: null,
     });
 
+    queries.useCRLs.mockReturnValue({
+      data: { items: [], total: 0 },
+      isLoading: false,
+      error: null,
+    });
+
     renderWithClient(<HomePage />);
 
     expect(screen.getByText(/complete response letters/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/crl table will be added next/i)
-    ).toBeInTheDocument();
+    // Table should render with "No CRLs found" message when data is empty
+    expect(screen.getByText(/no crls found/i)).toBeInTheDocument();
   });
 
   it('handles zero stats gracefully', () => {

@@ -22,11 +22,11 @@ describe('StatsDashboard', () => {
       Approved: 800,
       Unapproved: 434,
     },
-    by_year: {
-      '2023': 150,
-      '2022': 200,
-      '2021': 180,
-      '2020': 100,
+    by_year_and_status: {
+      '2023': { Approved: 100, Unapproved: 50 },
+      '2022': { Approved: 150, Unapproved: 50 },
+      '2021': { Approved: 120, Unapproved: 60 },
+      '2020': { Approved: 70, Unapproved: 30 },
     },
   };
 
@@ -55,7 +55,7 @@ describe('StatsDashboard', () => {
         Approved: 750,
         Unapproved: 250,
       },
-      by_year: {},
+      by_year_and_status: {},
     };
 
     render(<StatsDashboard stats={stats} />);
@@ -74,7 +74,7 @@ describe('StatsDashboard', () => {
         Approved: 0,
         Unapproved: 0,
       },
-      by_year: {},
+      by_year_and_status: {},
     };
 
     render(<StatsDashboard stats={stats} />);
@@ -101,7 +101,7 @@ describe('StatsDashboard', () => {
         Approved: 60,
         Unapproved: 40,
       },
-      by_year: {},
+      by_year_and_status: {},
     };
 
     render(<StatsDashboard stats={stats} />);
@@ -113,9 +113,9 @@ describe('StatsDashboard', () => {
     const stats = {
       total_crls: 100,
       by_status: {},
-      by_year: {
-        '2023': 50,
-        '2022': 50,
+      by_year_and_status: {
+        '2023': { Approved: 30, Unapproved: 20 },
+        '2022': { Approved: 30, Unapproved: 20 },
       },
     };
 
@@ -139,7 +139,7 @@ describe('StatsDashboard', () => {
       by_status: {
         Approved: 300,
       },
-      by_year: {},
+      by_year_and_status: {},
     };
 
     render(<StatsDashboard stats={stats} />);
@@ -173,7 +173,7 @@ describe('StatsDashboard', () => {
         Approved: 8000,
         Unapproved: 4345,
       },
-      by_year: {},
+      by_year_and_status: {},
     };
 
     render(<StatsDashboard stats={stats} />);

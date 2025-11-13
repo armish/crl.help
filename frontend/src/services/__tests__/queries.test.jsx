@@ -179,7 +179,7 @@ describe('useCRL', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(api.get).toHaveBeenCalledWith('/crls/1');
+    expect(api.get).toHaveBeenCalledWith('/crls/detail', { params: { crl_id: 1 } });
     expect(result.current.data).toEqual(mockCRL);
   });
 
