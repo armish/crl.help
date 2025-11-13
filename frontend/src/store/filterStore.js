@@ -13,8 +13,8 @@ import { create } from 'zustand';
 const useFilterStore = create((set) => ({
   // Filter state
   filters: {
-    approval_status: '',
-    letter_year: '',
+    approval_status: [], // Changed to array for multi-select
+    letter_year: [], // Changed to array for multi-select
     company_name: '',
     search_text: '',
   },
@@ -47,8 +47,8 @@ const useFilterStore = create((set) => ({
   clearFilters: () =>
     set({
       filters: {
-        approval_status: '',
-        letter_year: '',
+        approval_status: [],
+        letter_year: [],
         company_name: '',
         search_text: '',
       },
@@ -116,9 +116,14 @@ export const useQueryParams = () => {
   const sort = useFilterStore((state) => state.sort);
   const pagination = useFilterStore((state) => state.pagination);
 
-  // Filter out empty strings
+  // Filter out empty strings and empty arrays
   const cleanFilters = Object.fromEntries(
-    Object.entries(filters).filter(([_, value]) => value !== '')
+    Object.entries(filters).filter(([_, value]) => {
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+      return value !== '';
+    })
   );
 
   return {

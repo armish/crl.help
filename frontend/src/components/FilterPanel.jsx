@@ -17,7 +17,8 @@ export default function FilterPanel() {
   const { filters, setFilter, clearFilters } = useFilterStore();
   // Fetch unfiltered stats to get all available years for the dropdown
   const { data: stats } = useStats({});
-  const { data: companies } = useCompanies();
+  // Fetch more companies for better autocomplete (increase limit to 500)
+  const { data: companiesData } = useCompanies(500);
 
   // Local state for company autocomplete
   const [companyInput, setCompanyInput] = useState('');
@@ -33,9 +34,10 @@ export default function FilterPanel() {
     ? Object.keys(stats.by_year).sort((a, b) => b.localeCompare(a))
     : [];
 
-  // Filter companies based on input
+  // Extract company names from the response and filter based on input
+  const companyNames = companiesData?.companies?.map(c => c.company_name) || [];
   const filteredCompanies = companyInput.length >= 2
-    ? (companies || []).filter((company) =>
+    ? companyNames.filter((company) =>
         company.toLowerCase().includes(companyInput.toLowerCase())
       ).slice(0, 10) // Limit to 10 suggestions
     : [];
@@ -63,10 +65,26 @@ export default function FilterPanel() {
     setShowCompanySuggestions(false);
   };
 
+  const handleApprovalStatusToggle = (status) => {
+    const currentStatuses = filters.approval_status || [];
+    const newStatuses = currentStatuses.includes(status)
+      ? currentStatuses.filter(s => s !== status)
+      : [...currentStatuses, status];
+    setFilter('approval_status', newStatuses);
+  };
+
+  const handleYearToggle = (year) => {
+    const currentYears = filters.letter_year || [];
+    const newYears = currentYears.includes(year)
+      ? currentYears.filter(y => y !== year)
+      : [...currentYears, year];
+    setFilter('letter_year', newYears);
+  };
+
   // Check if any filters are active
   const hasActiveFilters =
-    filters.approval_status ||
-    filters.letter_year ||
+    filters.approval_status?.length > 0 ||
+    filters.letter_year?.length > 0 ||
     filters.company_name ||
     filters.search_text;
 
@@ -103,47 +121,48 @@ export default function FilterPanel() {
           />
         </div>
 
-        {/* Approval Status Dropdown */}
+        {/* Approval Status Multi-Select */}
         <div>
-          <label
-            htmlFor="approval_status"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Approval Status
           </label>
-          <select
-            id="approval_status"
-            value={filters.approval_status}
-            onChange={(e) => setFilter('approval_status', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Statuses</option>
-            <option value="Approved">Approved</option>
-            <option value="Unapproved">Unapproved</option>
-          </select>
+          <div className="space-y-2">
+            {['Approved', 'Unapproved'].map((status) => (
+              <label key={status} className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.approval_status?.includes(status)}
+                  onChange={() => handleApprovalStatusToggle(status)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">{status}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
-        {/* Year Dropdown */}
+        {/* Year Multi-Select */}
         <div>
-          <label
-            htmlFor="letter_year"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Year
           </label>
-          <select
-            id="letter_year"
-            value={filters.letter_year}
-            onChange={(e) => setFilter('letter_year', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Years</option>
-            {availableYears.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
+          <div className="border border-gray-300 rounded-md shadow-sm max-h-24 overflow-y-auto p-2 space-y-1">
+            {availableYears.length > 0 ? (
+              availableYears.map((year) => (
+                <label key={year} className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.letter_year?.includes(year)}
+                    onChange={() => handleYearToggle(year)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">{year}</span>
+                </label>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-2">No years available</p>
+            )}
+          </div>
         </div>
 
         {/* Company Name Autocomplete */}
@@ -200,8 +219,8 @@ export default function FilterPanel() {
             Active filters:{' '}
             {[
               filters.search_text && `Search: "${filters.search_text}"`,
-              filters.approval_status && `Status: ${filters.approval_status}`,
-              filters.letter_year && `Year: ${filters.letter_year}`,
+              filters.approval_status?.length > 0 && `Status: ${filters.approval_status.join(', ')}`,
+              filters.letter_year?.length > 0 && `Year: ${filters.letter_year.join(', ')}`,
               filters.company_name && `Company: ${filters.company_name}`,
             ]
               .filter(Boolean)
