@@ -1,8 +1,13 @@
-# FDA CRL Data Ingestion Pipeline
+# FDA CRL Data Ingestion Pipeline - Implementation Reference
+
+> **Note**: This is a technical reference document for the implemented data ingestion and AI services (Phases 3-5). For the overall project plan and roadmap, see [TODO.md](TODO.md).
 
 ## Overview
 
-The data ingestion pipeline downloads and processes FDA Complete Response Letter (CRL) data from the openFDA API and stores it in a DuckDB database.
+The data ingestion pipeline downloads and processes FDA Complete Response Letter (CRL) data from the openFDA API and stores it in a DuckDB database. This document describes the implementation details, usage, and technical specifications for:
+- **Phase 3**: Data Ingestion (download, parse, store)
+- **Phase 4**: AI Services (summarization, embeddings)
+- **Phase 5**: RAG Implementation (referenced in Next Steps)
 
 ## What Was Implemented
 
@@ -626,20 +631,24 @@ backend/
 └── generate_embeddings.py           # CLI tool for batch embedding generation
 ```
 
-## Next Steps
+## Completed Phases ✅
 
-Now that Phases 4.2 & 4.3 (AI Services) are complete, we can proceed with:
+**As of November 12, 2025**, the following phases are complete:
 
-1. **Phase 4.4:** Testing (comprehensive tests for AI services)
-2. **Phase 5:** RAG Implementation (semantic search & Q&A with CRL data)
-3. **Phase 7:** Backend API (FastAPI endpoints)
-4. **Phase 8-9:** Frontend (React UI with search and Q&A)
+- ✅ **Phase 3**: Data Ingestion Pipeline (download, parse, store)
+- ✅ **Phase 4**: AI Services (OpenAI client, summarization, embeddings)
+- ✅ **Phase 5**: RAG Implementation (vector search, Q&A service)
+- ✅ **Phase 7**: Backend API (FastAPI with comprehensive tests)
 
-The foundation is solid! We have:
-- ✅ 783 CRLs with full text
-- ✅ AI-powered summaries (~5-10 min to generate all)
-- ✅ Vector embeddings for semantic search (~4-8 min to generate all)
-- ✅ Ready for RAG implementation! 🎉
+**What We Have:**
+- ✅ 783 CRLs with full text loaded in DuckDB
+- ✅ AI-powered summaries for all CRLs
+- ✅ Vector embeddings for semantic search
+- ✅ RAG-powered Q&A service
+- ✅ REST API with 26 comprehensive tests (100% pass rate)
+- ✅ 219 total tests with 83.63% code coverage
+
+**See [TODO.md](TODO.md) for the complete project roadmap and next steps (Frontend in Phase 8).**
 
 ---
 
