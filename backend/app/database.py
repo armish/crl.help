@@ -321,8 +321,8 @@ class CRLRepository:
 
     def get_stats(
         self,
-        approval_status: Optional[str] = None,
-        letter_year: Optional[str] = None,
+        approval_status: Optional[List[str]] = None,
+        letter_year: Optional[List[str]] = None,
         company_name: Optional[str] = None,
         search_text: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -330,8 +330,8 @@ class CRLRepository:
         Get statistics about CRLs with optional filters.
 
         Args:
-            approval_status: Filter by approval status
-            letter_year: Filter by year
+            approval_status: Filter by approval status (can be a list)
+            letter_year: Filter by year (can be a list)
             company_name: Filter by company name (partial match)
             search_text: Full-text search in text field
 
@@ -344,13 +344,15 @@ class CRLRepository:
         where_clauses = []
         params = []
 
-        if approval_status:
-            where_clauses.append("approval_status = ?")
-            params.append(approval_status)
+        if approval_status and len(approval_status) > 0:
+            placeholders = ','.join(['?' for _ in approval_status])
+            where_clauses.append(f"approval_status IN ({placeholders})")
+            params.extend(approval_status)
 
-        if letter_year:
-            where_clauses.append("letter_year = ?")
-            params.append(letter_year)
+        if letter_year and len(letter_year) > 0:
+            placeholders = ','.join(['?' for _ in letter_year])
+            where_clauses.append(f"letter_year IN ({placeholders})")
+            params.extend(letter_year)
 
         if company_name:
             where_clauses.append("company_name ILIKE ?")

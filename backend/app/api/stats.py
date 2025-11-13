@@ -2,7 +2,8 @@
 Statistics API endpoints for CRL analytics and trends.
 """
 
-from fastapi import APIRouter, HTTPException
+from typing import List
+from fastapi import APIRouter, HTTPException, Query
 
 from app.database import CRLRepository
 from app.models import StatsOverview, CompanyStats, CompanyStatsResponse
@@ -17,8 +18,8 @@ crl_repo = CRLRepository()
 
 @router.get("/overview", response_model=StatsOverview)
 async def get_stats_overview(
-    approval_status: str = None,
-    letter_year: str = None,
+    approval_status: List[str] = Query(None),
+    letter_year: List[str] = Query(None),
     company_name: str = None,
     search_text: str = None
 ):
