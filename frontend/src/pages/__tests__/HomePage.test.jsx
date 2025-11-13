@@ -77,12 +77,12 @@ describe('HomePage', () => {
     const approvedElements = screen.getAllByText(/approved/i);
     expect(approvedElements.length).toBeGreaterThan(0);
     expect(screen.getByText('800')).toBeInTheDocument();
-    expect(screen.getByText('65%')).toBeInTheDocument(); // 800/1234 = 65%
+    expect(screen.getByText('65% of total')).toBeInTheDocument(); // 800/1234 = 65%
 
     // Check Unapproved card
     expect(screen.getByText(/unapproved/i)).toBeInTheDocument();
     expect(screen.getByText('434')).toBeInTheDocument();
-    expect(screen.getByText('35%')).toBeInTheDocument(); // 434/1234 = 35%
+    expect(screen.getByText('35% of total')).toBeInTheDocument(); // 434/1234 = 35%
   });
 
   it('displays by year section when year data is available', () => {
@@ -107,18 +107,13 @@ describe('HomePage', () => {
 
     renderWithClient(<HomePage />);
 
-    // Check section heading
+    // Check section heading for the chart
     expect(screen.getByText(/crls by year/i)).toBeInTheDocument();
 
-    // Check individual years (sorted in descending order)
-    expect(screen.getByText('2023')).toBeInTheDocument();
-    expect(screen.getByText('2022')).toBeInTheDocument();
-    expect(screen.getByText('2021')).toBeInTheDocument();
-
-    // Check counts
-    expect(screen.getByText('150')).toBeInTheDocument();
-    expect(screen.getByText('200')).toBeInTheDocument();
-    expect(screen.getByText('180')).toBeInTheDocument();
+    // Year data is now rendered inside Recharts component
+    // We can verify the chart container exists
+    const chartContainers = document.querySelectorAll('.recharts-responsive-container');
+    expect(chartContainers.length).toBeGreaterThan(0);
   });
 
   it('does not display by year section when no year data', () => {
@@ -162,7 +157,7 @@ describe('HomePage', () => {
 
     expect(screen.getByText(/complete response letters/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/crl table and filters will be implemented in phase 9/i)
+      screen.getByText(/crl table and filters will be added next/i)
     ).toBeInTheDocument();
   });
 
@@ -188,7 +183,7 @@ describe('HomePage', () => {
     const zeroElements = screen.getAllByText('0');
     expect(zeroElements.length).toBeGreaterThan(0);
 
-    // Should have two "0%" elements (one for Approved, one for Unapproved)
-    expect(screen.getAllByText('0%')).toHaveLength(2);
+    // Should have two "0% of total" elements (one for Approved, one for Unapproved)
+    expect(screen.getAllByText('0% of total')).toHaveLength(2);
   });
 });
