@@ -9,7 +9,7 @@
  * - Placeholder for CRL table
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { renderWithClient } from '../../test/utils';
 import HomePage from '../HomePage';
@@ -18,9 +18,19 @@ import * as queries from '../../services/queries';
 // Mock the queries module
 vi.mock('../../services/queries', () => ({
   useStats: vi.fn(),
+  useCompanies: vi.fn(),
 }));
 
 describe('HomePage', () => {
+  beforeEach(() => {
+    // Default mock for useCompanies
+    queries.useCompanies.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    });
+  });
+
   it('shows loading state initially', () => {
     queries.useStats.mockReturnValue({
       data: undefined,
@@ -80,7 +90,8 @@ describe('HomePage', () => {
     expect(screen.getByText('65% of total')).toBeInTheDocument(); // 800/1234 = 65%
 
     // Check Unapproved card
-    expect(screen.getByText(/unapproved/i)).toBeInTheDocument();
+    const unapprovedElements = screen.getAllByText(/unapproved/i);
+    expect(unapprovedElements.length).toBeGreaterThan(0);
     expect(screen.getByText('434')).toBeInTheDocument();
     expect(screen.getByText('35% of total')).toBeInTheDocument(); // 434/1234 = 35%
   });
@@ -157,7 +168,7 @@ describe('HomePage', () => {
 
     expect(screen.getByText(/complete response letters/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/crl table and filters will be added next/i)
+      screen.getByText(/crl table will be added next/i)
     ).toBeInTheDocument();
   });
 

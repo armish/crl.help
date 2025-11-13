@@ -9,6 +9,7 @@
 
 import { useStats } from '../services/queries';
 import StatsDashboard from '../components/StatsDashboard';
+import FilterPanel from '../components/FilterPanel';
 
 export default function HomePage() {
   const { data: stats, isLoading, error } = useStats();
@@ -38,12 +39,17 @@ export default function HomePage() {
         <StatsDashboard stats={stats} />
       </div>
 
-      {/* Placeholder for CRL Table */}
+      {/* CRL Table Section */}
       <div>
         <h3 className="text-xl font-bold text-gray-900 mb-4">Complete Response Letters</h3>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+
+        {/* Filter Panel */}
+        <FilterPanel />
+
+        {/* Placeholder for CRL Table */}
+        <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
           <p className="text-gray-600">
-            CRL table and filters will be added next
+            CRL table will be added next
           </p>
         </div>
       </div>
