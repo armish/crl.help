@@ -319,38 +319,75 @@ class CRLRepository:
         logger.debug(f"Updated CRL: {crl_id}")
         return True
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(
+        self,
+        approval_status: Optional[str] = None,
+        letter_year: Optional[str] = None,
+        company_name: Optional[str] = None,
+        search_text: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Get statistics about CRLs.
+        Get statistics about CRLs with optional filters.
+
+        Args:
+            approval_status: Filter by approval status
+            letter_year: Filter by year
+            company_name: Filter by company name (partial match)
+            search_text: Full-text search in text field
 
         Returns:
             Dict: Statistics including counts by status, year, etc.
         """
         stats = {}
 
+        # Build WHERE clause
+        where_clauses = []
+        params = []
+
+        if approval_status:
+            where_clauses.append("approval_status = ?")
+            params.append(approval_status)
+
+        if letter_year:
+            where_clauses.append("letter_year = ?")
+            params.append(letter_year)
+
+        if company_name:
+            where_clauses.append("company_name ILIKE ?")
+            params.append(f"%{company_name}%")
+
+        if search_text:
+            where_clauses.append("text ILIKE ?")
+            params.append(f"%{search_text}%")
+
+        where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
+
         # Total count
         stats["total_crls"] = self.conn.execute(
-            "SELECT COUNT(*) FROM crls"
+            f"SELECT COUNT(*) FROM crls WHERE {where_clause}",
+            params
         ).fetchone()[0]
 
         # By approval status
         stats["by_status"] = {}
-        status_results = self.conn.execute("""
+        status_results = self.conn.execute(f"""
             SELECT approval_status, COUNT(*) as count
             FROM crls
+            WHERE {where_clause}
             GROUP BY approval_status
-        """).fetchall()
+        """, params).fetchall()
         for status, count in status_results:
             stats["by_status"][status] = count
 
         # By year
         stats["by_year"] = {}
-        year_results = self.conn.execute("""
+        year_results = self.conn.execute(f"""
             SELECT letter_year, COUNT(*) as count
             FROM crls
+            WHERE {where_clause}
             GROUP BY letter_year
             ORDER BY letter_year DESC
-        """).fetchall()
+        """, params).fetchall()
         for year, count in year_results:
             stats["by_year"][year] = count
 
