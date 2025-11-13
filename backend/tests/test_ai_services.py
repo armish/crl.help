@@ -458,6 +458,179 @@ class TestRAGService:
         assert results[1]["question"] == "Q2?"
 
 
+class TestRAGServiceWithRealEmbeddings:
+    """Test RAG service with real embeddings from production database."""
+
+    def test_retrieve_similar_crls_with_real_embeddings(self, rag_service, monkeypatch):
+        """Test vector similarity search with real embeddings."""
+        from tests.fixtures.sample_embeddings import get_sample_embeddings, get_sample_crl_data
+
+        # Get real embeddings with 3072 dimensions
+        real_samples = get_sample_embeddings(dimension=3072)
+        assert len(real_samples) > 0, "Need at least one 3072-dim embedding sample"
+
+        # Mock embedding repo to return real embeddings
+        mock_embeddings = [
+            {"crl_id": sample["crl_id"], "embedding": sample["embedding"]}
+            for sample in real_samples
+        ]
+
+        monkeypatch.setattr(
+            rag_service.embedding_repo,
+            "get_embeddings_for_search",
+            lambda embedding_type: mock_embeddings
+        )
+
+        # Mock CRL repo to return real CRL data
+        def mock_get_by_id(crl_id):
+            return get_sample_crl_data(crl_id)
+
+        monkeypatch.setattr(
+            rag_service.crl_repo,
+            "get_by_id",
+            mock_get_by_id
+        )
+
+        # Use the first real embedding as query (to ensure we get a match)
+        query_embedding = real_samples[0]["embedding"]
+        results = rag_service._retrieve_similar_crls(query_embedding, top_k=3)
+
+        # Verify results
+        assert len(results) > 0, "Should find similar CRLs"
+        assert len(results) <= 3, "Should respect top_k limit"
+
+        # First result should be the query itself (or very similar)
+        top_crl_id, top_score, top_data = results[0]
+        assert isinstance(top_score, float)
+        assert 0.0 <= top_score <= 1.0, "Cosine similarity should be in [0, 1]"
+        # Since we're querying with an embedding from the set, we should get high similarity
+        assert top_score > 0.5, "Query against same embedding should have high similarity"
+
+        # Verify CRL data structure
+        assert top_data is not None
+        assert "id" in top_data
+        assert "company_name" in top_data
+        assert "application_number" in top_data
+
+    def test_vector_similarity_calculations_with_real_data(self):
+        """Test that vector similarity calculations work correctly with real embeddings."""
+        from tests.fixtures.sample_embeddings import get_sample_embeddings
+        from app.utils.vector_utils import cosine_similarity
+
+        real_samples = get_sample_embeddings(dimension=3072)
+        if len(real_samples) < 2:
+            pytest.skip("Need at least 2 real embeddings for similarity testing")
+
+        emb1 = real_samples[0]["embedding"]
+        emb2 = real_samples[1]["embedding"]
+
+        # Test cosine similarity
+        similarity = cosine_similarity(emb1, emb2)
+        assert isinstance(similarity, float)
+        assert -1.0 <= similarity <= 1.0, "Cosine similarity should be in [-1, 1]"
+
+        # Self-similarity should be 1.0 (or very close due to floating point)
+        self_similarity = cosine_similarity(emb1, emb1)
+        assert abs(self_similarity - 1.0) < 0.0001, "Self-similarity should be ~1.0"
+
+    def test_answer_question_with_real_embeddings(self, rag_service, monkeypatch):
+        """Test full Q&A flow with real embeddings (offline mode)."""
+        from tests.fixtures.sample_embeddings import get_sample_embeddings, get_sample_crl_data
+
+        real_samples = get_sample_embeddings(dimension=3072)
+        if len(real_samples) == 0:
+            pytest.skip("Need real embeddings for this test")
+
+        # Mock embedding repo
+        mock_embeddings = [
+            {"crl_id": sample["crl_id"], "embedding": sample["embedding"]}
+            for sample in real_samples
+        ]
+
+        monkeypatch.setattr(
+            rag_service.embedding_repo,
+            "get_embeddings_for_search",
+            lambda embedding_type: mock_embeddings
+        )
+
+        # Mock CRL repo
+        def mock_get_by_id(crl_id):
+            return get_sample_crl_data(crl_id)
+
+        monkeypatch.setattr(
+            rag_service.crl_repo,
+            "get_by_id",
+            mock_get_by_id
+        )
+
+        # Mock query embedding generation to use a real embedding
+        # (simulates what would happen if we had a real query)
+        query_embedding = real_samples[0]["embedding"]
+
+        monkeypatch.setattr(
+            rag_service.embeddings_service,
+            "generate_query_embedding",
+            lambda question: query_embedding
+        )
+
+        # Ask a question
+        result = rag_service.answer_question(
+            "What are the common deficiencies in Complete Response Letters?",
+            top_k=3,
+            save_to_db=False
+        )
+
+        # Verify result structure
+        assert result is not None
+        assert "question" in result
+        assert "answer" in result
+        assert "relevant_crls" in result
+        assert "confidence" in result
+        assert "model" in result
+
+        # Should find relevant CRLs
+        assert result["answer"] is not None
+        assert "[DRY-RUN SUMMARY]" in result["answer"]
+        assert isinstance(result["relevant_crls"], list)
+        assert len(result["relevant_crls"]) > 0, "Should find at least one relevant CRL"
+        assert 0.0 <= result["confidence"] <= 1.0
+
+    def test_embedding_dimension_consistency(self):
+        """Test that real embeddings have consistent dimensions."""
+        from tests.fixtures.sample_embeddings import SAMPLE_EMBEDDINGS
+
+        dimensions = [len(sample["embedding"]) for sample in SAMPLE_EMBEDDINGS]
+
+        # All embeddings should be either 1536 or 3072
+        for dim in dimensions:
+            assert dim in [1536, 3072], f"Unexpected embedding dimension: {dim}"
+
+        # Count by dimension
+        dim_1536 = sum(1 for d in dimensions if d == 1536)
+        dim_3072 = sum(1 for d in dimensions if d == 3072)
+
+        print(f"\nEmbedding dimensions: {dim_1536} × 1536-dim, {dim_3072} × 3072-dim")
+
+    def test_real_embeddings_are_normalized(self):
+        """Test that real embeddings are properly normalized (or close to it)."""
+        from tests.fixtures.sample_embeddings import get_sample_embeddings
+        from app.utils.vector_utils import vector_magnitude
+        import math
+
+        for dim in [1536, 3072]:
+            samples = get_sample_embeddings(dimension=dim)
+            if not samples:
+                continue
+
+            for sample in samples:
+                magnitude = vector_magnitude(sample["embedding"])
+                # OpenAI embeddings are normalized, so magnitude should be close to 1.0
+                # Allow some tolerance for floating point precision
+                assert 0.9 < magnitude < 1.1, (
+                    f"Embedding {sample['crl_id']} has unexpected magnitude: {magnitude}"
+                )
+
+
 class TestAIServicesIntegration:
     """Integration tests for AI services."""
 
