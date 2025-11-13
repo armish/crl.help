@@ -87,15 +87,40 @@ class OpenAIClient:
             return dummy_response
 
         try:
-            response = self.client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens
-            )
-            content = response.choices[0].message.content
-            logger.debug(f"OpenAI completion: {len(content)} chars, model={model}")
-            return content
+            # GPT-5 models use the simplified responses API
+            if model.startswith("gpt-5"):
+                # Combine all messages into a single input string
+                input_text = "\n\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+
+                response = self.client.responses.create(
+                    model=model,
+                    input=input_text
+                )
+                content = response.output_text
+                logger.debug(f"OpenAI completion (GPT-5): {len(content)} chars, model={model}")
+                return content
+
+            # GPT-4 and earlier use the chat completions API
+            else:
+                completion_params = {
+                    "model": model,
+                    "messages": messages,
+                    "temperature": temperature,
+                }
+
+                if max_tokens is not None:
+                    completion_params["max_tokens"] = max_tokens
+
+                response = self.client.chat.completions.create(**completion_params)
+                content = response.choices[0].message.content
+
+                # Log if content is None or empty
+                if not content:
+                    logger.warning(f"OpenAI returned empty content. Model: {model}, finish_reason: {response.choices[0].finish_reason}")
+                    content = ""
+
+                logger.debug(f"OpenAI completion (GPT-4): {len(content)} chars, model={model}")
+                return content
 
         except OpenAIError as e:
             logger.error(f"OpenAI API error: {e}")
@@ -131,9 +156,11 @@ class OpenAIClient:
             model = self.settings.openai_embedding_model
 
         if self.dry_run:
-            # Return a dummy embedding vector (1536 dimensions for text-embedding-3-small)
-            dummy_embedding = [0.0] * 1536
-            logger.debug("DRY-RUN: Generated dummy embedding vector (1536 dims)")
+            # Return a dummy embedding vector
+            # text-embedding-3-small: 1536 dims, text-embedding-3-large: 3072 dims
+            dims = 3072 if "large" in model else 1536
+            dummy_embedding = [0.0] * dims
+            logger.debug(f"DRY-RUN: Generated dummy embedding vector ({dims} dims)")
             return dummy_embedding
 
         try:

@@ -55,17 +55,10 @@ class SummarizationService:
         if not crl_text or not crl_text.strip():
             raise ValueError("CRL text cannot be empty")
 
-        # Truncate very long texts to save tokens (keep first ~8000 chars)
-        if len(crl_text) > 8000:
-            truncated_text = crl_text[:8000] + "...[truncated]"
-            logger.warning(
-                f"CRL text truncated from {len(crl_text)} to 8000 chars for summarization"
-            )
-        else:
-            truncated_text = crl_text
-
-        # Create the prompt
-        prompt = self._create_summary_prompt(truncated_text, max_summary_length)
+        # Create the prompt with full text
+        # Modern models (GPT-5, GPT-4o) support 128K-400K token contexts,
+        # so we don't need to truncate CRLs (typically 5K-50K chars / 1K-15K tokens)
+        prompt = self._create_summary_prompt(crl_text, max_summary_length)
 
         # Generate summary
         messages = [
@@ -75,6 +68,9 @@ class SummarizationService:
                     "You are an expert in pharmaceutical regulatory affairs, "
                     "specializing in analyzing FDA Complete Response Letters. "
                     "Your summaries are clear, concise, and highlight key deficiencies."
+                    "You one-paragraph summary will be read by an executive who wants "
+                    "to extract learnings and cautions for future submissions. "
+                    "Answer in markdown format. No headers."
                 )
             },
             {
@@ -91,7 +87,7 @@ class SummarizationService:
                 max_tokens=max_summary_length * 2  # Rough estimate: 1 word ≈ 1.5 tokens
             )
 
-            logger.info(
+            logger.debug(
                 f"Generated summary: {len(summary)} chars "
                 f"(dry_run={self.settings.ai_dry_run})"
             )

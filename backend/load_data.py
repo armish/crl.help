@@ -3,15 +3,25 @@
 Script to load FDA CRL data into the database.
 
 Usage:
-    python load_data.py [--no-cache]
+    python load_data.py [options]
 
 Options:
     --no-cache    Force re-download even if cached data exists
+    --help, -h    Show this help message and exit
+
+Example:
+    python load_data.py              # Use cached data if available
+    python load_data.py --no-cache   # Force fresh download
 """
 
 import asyncio
 import sys
 from pathlib import Path
+
+# Check for help first
+if "--help" in sys.argv or "-h" in sys.argv:
+    print(__doc__)
+    sys.exit(0)
 
 # Add app to Python path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -20,8 +30,10 @@ from app.config import settings
 from app.database import init_db, CRLRepository
 from app.services.data_ingestion import fetch_crl_data
 from app.services.data_processor import process_crl_data
-from app.utils.logging_config import get_logger
+from app.utils.logging_config import get_logger, setup_logging
 
+# Setup logging
+setup_logging(log_level="INFO", enable_file_logging=True)
 logger = get_logger(__name__)
 
 

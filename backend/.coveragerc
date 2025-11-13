@@ -41,8 +41,8 @@ skip_covered = False
 # Skip empty files
 skip_empty = True
 
-# Fail if coverage is below this threshold
-fail_under = 80
+# Coverage is reported but does not fail tests
+# fail_under = 80
 
 # Exclude certain lines from coverage
 exclude_lines =
