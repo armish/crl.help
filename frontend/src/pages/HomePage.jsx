@@ -10,9 +10,14 @@
 import { useStats } from '../services/queries';
 import StatsDashboard from '../components/StatsDashboard';
 import FilterPanel from '../components/FilterPanel';
+import { useQueryParams } from '../store/filterStore';
 
 export default function HomePage() {
-  const { data: stats, isLoading, error } = useStats();
+  // Get filter parameters from Zustand store
+  const filterParams = useQueryParams();
+
+  // Fetch stats with current filters applied
+  const { data: stats, isLoading, error } = useStats(filterParams);
 
   if (isLoading) {
     return (
@@ -33,7 +38,13 @@ export default function HomePage() {
 
   return (
     <div className="space-y-8">
-      {/* Statistics Dashboard */}
+      {/* Filter Panel - at the top */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Filter CRLs</h2>
+        <FilterPanel />
+      </div>
+
+      {/* Statistics Dashboard - updates based on filters */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Overview</h2>
         <StatsDashboard stats={stats} />
@@ -43,11 +54,8 @@ export default function HomePage() {
       <div>
         <h3 className="text-xl font-bold text-gray-900 mb-4">Complete Response Letters</h3>
 
-        {/* Filter Panel */}
-        <FilterPanel />
-
         {/* Placeholder for CRL Table */}
-        <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
           <p className="text-gray-600">
             CRL table will be added next
           </p>

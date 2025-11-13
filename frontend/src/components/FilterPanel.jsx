@@ -15,7 +15,8 @@ import { useStats, useCompanies } from '../services/queries';
 
 export default function FilterPanel() {
   const { filters, setFilter, clearFilters } = useFilterStore();
-  const { data: stats } = useStats();
+  // Fetch unfiltered stats to get all available years for the dropdown
+  const { data: stats } = useStats({});
   const { data: companies } = useCompanies();
 
   // Local state for company autocomplete
