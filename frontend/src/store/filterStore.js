@@ -12,10 +12,11 @@ import { create } from 'zustand';
 
 const useFilterStore = create((set) => ({
   // Filter state
+  // Note: Empty arrays mean "select all" - no filter applied
   filters: {
-    approval_status: [], // Changed to array for multi-select
-    letter_year: [], // Changed to array for multi-select
-    company_name: '',
+    approval_status: [], // Empty = all selected
+    letter_year: [], // Empty = all selected
+    company_name: [], // Changed to array, empty = all selected
     search_text: '',
   },
 
@@ -49,7 +50,7 @@ const useFilterStore = create((set) => ({
       filters: {
         approval_status: [],
         letter_year: [],
-        company_name: '',
+        company_name: [],
         search_text: '',
       },
       pagination: { limit: 50, offset: 0 },
