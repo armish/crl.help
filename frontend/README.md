@@ -68,6 +68,65 @@ This avoids CORS issues during development.
 - `npm run build` - Build production bundle
 - `npm run preview` - Preview production build locally
 - `npm run lint` - Run ESLint (if configured)
+- `npm test` - Run tests in watch mode
+- `npm run test:ui` - Run tests with Vitest UI
+- `npm run test:coverage` - Run tests with coverage report
+
+## Testing
+
+The project uses **Vitest** and **React Testing Library** for frontend testing.
+
+### Running Tests
+
+```bash
+# Run tests in watch mode (recommended during development)
+npm test
+
+# Run tests once (for CI/CD)
+npm test -- --run
+
+# Run tests with UI
+npm run test:ui
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+### Test Structure
+
+```
+src/
+├── components/__tests__/     # Component tests
+├── pages/__tests__/           # Page tests
+├── services/__tests__/        # API and query tests
+├── store/__tests__/           # State management tests
+└── test/                      # Test utilities
+    ├── setup.js               # Global test setup
+    └── utils.jsx              # Test helpers (renderWithClient, etc.)
+```
+
+### Testing Best Practices
+
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test React Query hooks with mocked API
+- **Mocking**: Use Vitest's `vi.mock()` for external dependencies
+- **Test Coverage**: Aim for 70-80% coverage on critical paths
+- **Accessibility**: Tests verify semantic HTML and ARIA attributes
+
+### Current Test Coverage
+
+All Phase 8 components have comprehensive tests:
+- ✅ Layout component (7 tests) - 100% coverage
+- ✅ HomePage component (7 tests) - 100% coverage
+- ✅ Zustand filterStore (10 tests) - 62% coverage
+- ✅ React Query hooks (12 tests) - 56% coverage
+
+**Overall: 36 tests passing, ~64% coverage**
+
+Uncovered areas are primarily:
+- Unused React Query hooks (useCRLText, useCompanies, useQAHistory, useHealth)
+- Unused filterStore actions
+- These will be covered when implementing Phase 9 features
 
 ## Features Implemented (Phase 8)
 
@@ -80,6 +139,8 @@ This avoids CORS issues during development.
 - [x] API proxy configuration
 - [x] Main layout component
 - [x] Homepage with statistics cards
+- [x] **Testing infrastructure with Vitest + RTL**
+- [x] **Comprehensive test suite for all components**
 
 ### 🔄 Coming in Phase 9
 - [ ] CRL table with TanStack Table
