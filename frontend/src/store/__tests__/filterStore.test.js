@@ -28,9 +28,10 @@ describe('filterStore', () => {
     const { result } = renderHook(() => useFilterStore());
 
     expect(result.current.filters).toEqual({
-      approval_status: '',
-      letter_year: '',
-      company_name: '',
+      approval_status: [],
+      letter_year: [],
+      letter_type: [],
+      company_name: [],
       search_text: '',
     });
 
@@ -40,7 +41,7 @@ describe('filterStore', () => {
     });
 
     expect(result.current.pagination).toEqual({
-      limit: 50,
+      limit: 10,
       offset: 0,
     });
   });
@@ -64,14 +65,14 @@ describe('filterStore', () => {
       result.current.nextPage();
     });
 
-    expect(result.current.pagination.offset).toBe(50);
+    expect(result.current.pagination.offset).toBe(10);
 
     // Set a filter - should reset to page 1
     act(() => {
-      result.current.setFilter('letter_year', '2023');
+      result.current.setFilter('letter_year', ['2023']);
     });
 
-    expect(result.current.filters.letter_year).toBe('2023');
+    expect(result.current.filters.letter_year).toEqual(['2023']);
     expect(result.current.pagination.offset).toBe(0);
   });
 
@@ -80,9 +81,9 @@ describe('filterStore', () => {
 
     // Set some filters
     act(() => {
-      result.current.setFilter('approval_status', 'Approved');
-      result.current.setFilter('letter_year', '2023');
-      result.current.setFilter('company_name', 'Pfizer');
+      result.current.setFilter('approval_status', ['Approved']);
+      result.current.setFilter('letter_year', ['2023']);
+      result.current.setFilter('company_name', ['Pfizer']);
       result.current.nextPage();
     });
 
@@ -92,9 +93,10 @@ describe('filterStore', () => {
     });
 
     expect(result.current.filters).toEqual({
-      approval_status: '',
-      letter_year: '',
-      company_name: '',
+      approval_status: [],
+      letter_year: [],
+      letter_type: [],
+      company_name: [],
       search_text: '',
     });
     expect(result.current.pagination.offset).toBe(0);
@@ -120,13 +122,13 @@ describe('filterStore', () => {
       result.current.nextPage();
     });
 
-    expect(result.current.pagination.offset).toBe(50);
+    expect(result.current.pagination.offset).toBe(10);
 
     act(() => {
       result.current.nextPage();
     });
 
-    expect(result.current.pagination.offset).toBe(100);
+    expect(result.current.pagination.offset).toBe(20);
   });
 
   it('prevPage decrements offset by limit', () => {
@@ -138,14 +140,14 @@ describe('filterStore', () => {
       result.current.nextPage();
     });
 
-    expect(result.current.pagination.offset).toBe(100);
+    expect(result.current.pagination.offset).toBe(20);
 
     // Go back one page
     act(() => {
       result.current.prevPage();
     });
 
-    expect(result.current.pagination.offset).toBe(50);
+    expect(result.current.pagination.offset).toBe(10);
   });
 
   it('prevPage does not go below zero', () => {
@@ -167,18 +169,18 @@ describe('filterStore', () => {
         // First clear any previous state
         storeResult.current.clearFilters();
         storeResult.current.setSort('letter_date', 'DESC');
-        storeResult.current.setFilter('approval_status', 'Approved');
-        storeResult.current.setFilter('letter_year', '2023');
+        storeResult.current.setFilter('approval_status', ['Approved']);
+        storeResult.current.setFilter('letter_year', ['2023']);
       });
 
       const { result: paramsResult } = renderHook(() => useQueryParams());
 
       expect(paramsResult.current).toEqual({
-        approval_status: 'Approved',
-        letter_year: '2023',
+        approval_status: ['Approved'],
+        letter_year: ['2023'],
         sort_by: 'letter_date',
         sort_order: 'DESC',
-        limit: 50,
+        limit: 10,
         offset: 0,
       });
     });
@@ -190,22 +192,23 @@ describe('filterStore', () => {
         // First clear any previous state
         storeResult.current.clearFilters();
         storeResult.current.setSort('letter_date', 'DESC');
-        storeResult.current.setFilter('approval_status', 'Approved');
+        storeResult.current.setFilter('approval_status', ['Approved']);
         // Leave other filters empty
       });
 
       const { result: paramsResult } = renderHook(() => useQueryParams());
 
       expect(paramsResult.current).toEqual({
-        approval_status: 'Approved',
+        approval_status: ['Approved'],
         sort_by: 'letter_date',
         sort_order: 'DESC',
-        limit: 50,
+        limit: 10,
         offset: 0,
       });
 
       // Should not include empty filters
       expect(paramsResult.current.letter_year).toBeUndefined();
+      expect(paramsResult.current.letter_type).toBeUndefined();
       expect(paramsResult.current.company_name).toBeUndefined();
       expect(paramsResult.current.search_text).toBeUndefined();
     });

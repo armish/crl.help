@@ -20,6 +20,7 @@ class CRLBase(BaseModel):
     application_number: List[str]
     letter_date: str
     letter_year: str
+    letter_type: Optional[str] = None
     approval_status: str
     company_name: str
     approver_center: List[str]
@@ -87,6 +88,7 @@ class StatsOverview(BaseModel):
     total_crls: int
     by_status: dict  # {"Approved": 295, "Unapproved": 97}
     by_year: dict  # {"2024": 67, "2023": 27, ...}
+    by_year_and_status: dict  # {"2024": {"Approved": 50, "Unapproved": 17}, ...}
 
 
 class CompanyStats(BaseModel):

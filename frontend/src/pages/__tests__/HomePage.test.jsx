@@ -9,7 +9,7 @@
  * - Placeholder for CRL table
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { renderWithClient } from '../../test/utils';
 import HomePage from '../HomePage';
@@ -18,9 +18,58 @@ import * as queries from '../../services/queries';
 // Mock the queries module
 vi.mock('../../services/queries', () => ({
   useStats: vi.fn(),
+  useCompanies: vi.fn(),
+  useCRLs: vi.fn(),
+}));
+
+// Mock the filterStore module
+vi.mock('../../store/filterStore', () => ({
+  default: vi.fn(() => ({
+    filters: {
+      approval_status: [],
+      letter_year: [],
+      letter_type: [],
+      company_name: [],
+      search_text: '',
+    },
+    sort: {
+      sort_by: 'letter_date',
+      sort_order: 'DESC',
+    },
+    pagination: {
+      limit: 10,
+      offset: 0,
+    },
+    setFilter: vi.fn(),
+    clearFilters: vi.fn(),
+    setSort: vi.fn(),
+    setPagination: vi.fn(),
+  })),
+  useQueryParams: vi.fn(() => ({
+    sort_by: 'letter_date',
+    sort_order: 'DESC',
+    limit: 10,
+    offset: 0,
+  })),
 }));
 
 describe('HomePage', () => {
+  beforeEach(() => {
+    // Default mock for useCompanies
+    queries.useCompanies.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    });
+
+    // Default mock for useCRLs
+    queries.useCRLs.mockReturnValue({
+      data: { items: [], total: 0 },
+      isLoading: false,
+      error: null,
+    });
+  });
+
   it('shows loading state initially', () => {
     queries.useStats.mockReturnValue({
       data: undefined,
@@ -77,12 +126,13 @@ describe('HomePage', () => {
     const approvedElements = screen.getAllByText(/approved/i);
     expect(approvedElements.length).toBeGreaterThan(0);
     expect(screen.getByText('800')).toBeInTheDocument();
-    expect(screen.getByText('65%')).toBeInTheDocument(); // 800/1234 = 65%
+    expect(screen.getByText('65% of total')).toBeInTheDocument(); // 800/1234 = 65%
 
     // Check Unapproved card
-    expect(screen.getByText(/unapproved/i)).toBeInTheDocument();
+    const unapprovedElements = screen.getAllByText(/unapproved/i);
+    expect(unapprovedElements.length).toBeGreaterThan(0);
     expect(screen.getByText('434')).toBeInTheDocument();
-    expect(screen.getByText('35%')).toBeInTheDocument(); // 434/1234 = 35%
+    expect(screen.getByText('35% of total')).toBeInTheDocument(); // 434/1234 = 35%
   });
 
   it('displays by year section when year data is available', () => {
@@ -92,10 +142,10 @@ describe('HomePage', () => {
         Approved: 300,
         Unapproved: 230,
       },
-      by_year: {
-        '2023': 150,
-        '2022': 200,
-        '2021': 180,
+      by_year_and_status: {
+        '2023': { Approved: 100, Unapproved: 50 },
+        '2022': { Approved: 120, Unapproved: 80 },
+        '2021': { Approved: 80, Unapproved: 100 },
       },
     };
 
@@ -107,18 +157,13 @@ describe('HomePage', () => {
 
     renderWithClient(<HomePage />);
 
-    // Check section heading
+    // Check section heading for the chart
     expect(screen.getByText(/crls by year/i)).toBeInTheDocument();
 
-    // Check individual years (sorted in descending order)
-    expect(screen.getByText('2023')).toBeInTheDocument();
-    expect(screen.getByText('2022')).toBeInTheDocument();
-    expect(screen.getByText('2021')).toBeInTheDocument();
-
-    // Check counts
-    expect(screen.getByText('150')).toBeInTheDocument();
-    expect(screen.getByText('200')).toBeInTheDocument();
-    expect(screen.getByText('180')).toBeInTheDocument();
+    // Year data is now rendered inside Recharts component
+    // We can verify the chart container exists
+    const chartContainers = document.querySelectorAll('.recharts-responsive-container');
+    expect(chartContainers.length).toBeGreaterThan(0);
   });
 
   it('does not display by year section when no year data', () => {
@@ -128,7 +173,7 @@ describe('HomePage', () => {
         Approved: 60,
         Unapproved: 40,
       },
-      by_year: {},
+      by_year_and_status: {},
     };
 
     queries.useStats.mockReturnValue({
@@ -142,7 +187,7 @@ describe('HomePage', () => {
     expect(screen.queryByText(/crls by year/i)).not.toBeInTheDocument();
   });
 
-  it('displays placeholder for CRL table', () => {
+  it('displays CRL table section', () => {
     const mockStats = {
       total_crls: 100,
       by_status: {
@@ -158,12 +203,17 @@ describe('HomePage', () => {
       error: null,
     });
 
+    queries.useCRLs.mockReturnValue({
+      data: { items: [], total: 0 },
+      isLoading: false,
+      error: null,
+    });
+
     renderWithClient(<HomePage />);
 
     expect(screen.getByText(/complete response letters/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/crl table and filters will be implemented in phase 9/i)
-    ).toBeInTheDocument();
+    // Table should render with "No CRLs found" message when data is empty
+    expect(screen.getByText(/no crls found/i)).toBeInTheDocument();
   });
 
   it('handles zero stats gracefully', () => {
@@ -188,7 +238,7 @@ describe('HomePage', () => {
     const zeroElements = screen.getAllByText('0');
     expect(zeroElements.length).toBeGreaterThan(0);
 
-    // Should have two "0%" elements (one for Approved, one for Unapproved)
-    expect(screen.getAllByText('0%')).toHaveLength(2);
+    // Should have two "0% of total" elements (one for Approved, one for Unapproved)
+    expect(screen.getAllByText('0% of total')).toHaveLength(2);
   });
 });

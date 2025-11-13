@@ -16,6 +16,21 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 30000, // 30 second timeout
+  // Serialize array parameters correctly for FastAPI Query() parameters
+  // e.g., approval_status=Approved&approval_status=Unapproved
+  paramsSerializer: {
+    serialize: (params) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach((item) => searchParams.append(key, item));
+        } else if (value !== null && value !== undefined && value !== '') {
+          searchParams.append(key, value);
+        }
+      });
+      return searchParams.toString();
+    },
+  },
 });
 
 // Request interceptor for logging (development only)

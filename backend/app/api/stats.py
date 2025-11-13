@@ -2,7 +2,8 @@
 Statistics API endpoints for CRL analytics and trends.
 """
 
-from fastapi import APIRouter, HTTPException
+from typing import List
+from fastapi import APIRouter, HTTPException, Query
 
 from app.database import CRLRepository
 from app.models import StatsOverview, CompanyStats, CompanyStatsResponse
@@ -16,14 +17,26 @@ crl_repo = CRLRepository()
 
 
 @router.get("/overview", response_model=StatsOverview)
-async def get_stats_overview():
+async def get_stats_overview(
+    approval_status: List[str] = Query(None),
+    letter_year: List[str] = Query(None),
+    company_name: List[str] = Query(None),
+    search_text: str = None
+):
     """
-    Get overall statistics about CRLs in the database.
+    Get overall statistics about CRLs in the database with optional filters.
 
     Returns aggregate statistics including:
     - Total CRL count
     - Breakdown by approval status
     - Breakdown by year
+
+    ## Query Parameters
+
+    - **approval_status**: Filter by approval status (e.g., "Approved", "Unapproved")
+    - **letter_year**: Filter by year (e.g., "2024")
+    - **company_name**: Filter by company name (partial match)
+    - **search_text**: Full-text search in letter text
 
     ## Example Response
 
@@ -44,12 +57,18 @@ async def get_stats_overview():
     ```
     """
     try:
-        stats = crl_repo.get_stats()
+        stats = crl_repo.get_stats(
+            approval_status=approval_status,
+            letter_year=letter_year,
+            company_name=company_name,
+            search_text=search_text
+        )
 
         return StatsOverview(
             total_crls=stats["total_crls"],
             by_status=stats["by_status"],
-            by_year=stats["by_year"]
+            by_year=stats["by_year"],
+            by_year_and_status=stats["by_year_and_status"]
         )
 
     except Exception as e:

@@ -26,6 +26,7 @@ summary_repo = SummaryRepository()
 async def list_crls(
     approval_status: Optional[str] = Query(None, description="Filter by approval status"),
     letter_year: Optional[str] = Query(None, description="Filter by year"),
+    letter_type: Optional[str] = Query(None, description="Filter by letter type (BLA, NDA, etc.)"),
     company_name: Optional[str] = Query(None, description="Filter by company name (partial match)"),
     search_text: Optional[str] = Query(None, description="Full-text search in letter content"),
     sort_by: str = Query("letter_date", description="Field to sort by"),
@@ -61,6 +62,7 @@ async def list_crls(
             offset=offset,
             approval_status=approval_status,
             letter_year=letter_year,
+            letter_type=letter_type,
             company_name=company_name,
             search_text=search_text,
             sort_by=sort_by,
@@ -74,6 +76,7 @@ async def list_crls(
                 application_number=crl["application_number"] or [],
                 letter_date=str(crl["letter_date"]) if crl["letter_date"] else "",
                 letter_year=crl["letter_year"] or "",
+                letter_type=crl["letter_type"],
                 approval_status=crl["approval_status"] or "",
                 company_name=crl["company_name"] or "",
                 approver_center=crl["approver_center"] or []
@@ -96,8 +99,8 @@ async def list_crls(
         raise HTTPException(status_code=500, detail="Failed to retrieve CRLs")
 
 
-@router.get("/{crl_id}", response_model=CRLWithSummary)
-async def get_crl(crl_id: str):
+@router.get("/detail", response_model=CRLWithSummary)
+async def get_crl(crl_id: str = Query(..., description="CRL ID")):
     """
     Get detailed information about a specific CRL including AI summary.
 
@@ -109,7 +112,7 @@ async def get_crl(crl_id: str):
     - AI-generated summary (if available)
     - Summary model information
 
-    Note: Use `GET /crls/{crl_id}/text` to also retrieve full letter text.
+    Note: Use `GET /crls/text?crl_id=...` to also retrieve full letter text.
     """
     try:
         # Get CRL data
@@ -148,8 +151,8 @@ async def get_crl(crl_id: str):
         raise HTTPException(status_code=500, detail="Failed to retrieve CRL")
 
 
-@router.get("/{crl_id}/text", response_model=CRLWithText)
-async def get_crl_with_text(crl_id: str):
+@router.get("/text", response_model=CRLWithText)
+async def get_crl_with_text(crl_id: str = Query(..., description="CRL ID")):
     """
     Get complete CRL information including full letter text.
 

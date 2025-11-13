@@ -12,10 +12,12 @@ import { create } from 'zustand';
 
 const useFilterStore = create((set) => ({
   // Filter state
+  // Note: Empty arrays mean "select all" - no filter applied
   filters: {
-    approval_status: '',
-    letter_year: '',
-    company_name: '',
+    approval_status: [], // Empty = all selected
+    letter_year: [], // Empty = all selected
+    letter_type: [], // Empty = all selected
+    company_name: [], // Changed to array, empty = all selected
     search_text: '',
   },
 
@@ -27,7 +29,7 @@ const useFilterStore = create((set) => ({
 
   // Pagination state
   pagination: {
-    limit: 50,
+    limit: 10,
     offset: 0,
   },
 
@@ -47,19 +49,26 @@ const useFilterStore = create((set) => ({
   clearFilters: () =>
     set({
       filters: {
-        approval_status: '',
-        letter_year: '',
-        company_name: '',
+        approval_status: [],
+        letter_year: [],
+        letter_type: [],
+        company_name: [],
         search_text: '',
       },
-      pagination: { limit: 50, offset: 0 },
+      pagination: { limit: 10, offset: 0 },
     }),
 
-  setSort: (sort_by, sort_order) =>
-    set({
-      sort: { sort_by, sort_order },
-      pagination: { limit: 50, offset: 0 }, // Reset pagination when sorting
-    }),
+  setSort: (sort_by_or_obj, sort_order) => {
+    // Support both setSort(sort_by, sort_order) and setSort({sort_by, sort_order})
+    const sortUpdate = typeof sort_by_or_obj === 'object'
+      ? sort_by_or_obj
+      : { sort_by: sort_by_or_obj, sort_order };
+
+    return set((state) => ({
+      sort: sortUpdate,
+      pagination: { limit: state.pagination.limit, offset: 0 }, // Reset pagination when sorting
+    }));
+  },
 
   toggleSortOrder: () =>
     set((state) => ({
@@ -68,6 +77,14 @@ const useFilterStore = create((set) => ({
         sort_order: state.sort.sort_order === 'ASC' ? 'DESC' : 'ASC',
       },
       pagination: { ...state.pagination, offset: 0 },
+    })),
+
+  setPagination: (newPagination) =>
+    set((state) => ({
+      pagination: {
+        ...state.pagination,
+        ...newPagination,
+      },
     })),
 
   setPage: (page) =>
@@ -116,9 +133,14 @@ export const useQueryParams = () => {
   const sort = useFilterStore((state) => state.sort);
   const pagination = useFilterStore((state) => state.pagination);
 
-  // Filter out empty strings
+  // Filter out empty strings and empty arrays
   const cleanFilters = Object.fromEntries(
-    Object.entries(filters).filter(([_, value]) => value !== '')
+    Object.entries(filters).filter(([_, value]) => {
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+      return value !== '';
+    })
   );
 
   return {

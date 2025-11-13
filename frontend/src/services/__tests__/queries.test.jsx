@@ -52,7 +52,11 @@ describe('Query Keys', () => {
   });
 
   it('generates correct stats query key', () => {
-    expect(queryKeys.stats()).toEqual(['stats']);
+    expect(queryKeys.stats({})).toEqual(['stats', {}]);
+    expect(queryKeys.stats({ approval_status: 'Approved' })).toEqual([
+      'stats',
+      { approval_status: 'Approved' },
+    ]);
   });
 
   it('generates correct companies query key', () => {
@@ -86,7 +90,7 @@ describe('useStats', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(api.get).toHaveBeenCalledWith('/stats/overview');
+    expect(api.get).toHaveBeenCalledWith('/stats/overview', { params: {} });
     expect(result.current.data).toEqual(mockStats);
   });
 
@@ -175,7 +179,7 @@ describe('useCRL', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(api.get).toHaveBeenCalledWith('/crls/1');
+    expect(api.get).toHaveBeenCalledWith('/crls/detail', { params: { crl_id: 1 } });
     expect(result.current.data).toEqual(mockCRL);
   });
 

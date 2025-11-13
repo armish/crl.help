@@ -17,7 +17,7 @@ export const queryKeys = {
   crls: (params) => ['crls', params],
   crl: (id) => ['crl', id],
   crlText: (id) => ['crlText', id],
-  stats: () => ['stats'],
+  stats: (params) => ['stats', params],
   companies: (limit) => ['companies', limit],
   qa: (id) => ['qa', id],
   qaHistory: (limit) => ['qaHistory', limit],
@@ -44,7 +44,7 @@ export function useCRLs(params = {}) {
       return data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    keepPreviousData: true, // Keep previous page while loading new one
+    placeholderData: (previousData) => previousData, // Keep previous page while loading new one
   });
 }
 
@@ -57,7 +57,7 @@ export function useCRL(id) {
   return useQuery({
     queryKey: queryKeys.crl(id),
     queryFn: async () => {
-      const { data } = await api.get(`/crls/${id}`);
+      const { data } = await api.get('/crls/detail', { params: { crl_id: id } });
       return data;
     },
     enabled: !!id, // Only fetch if ID is provided
@@ -74,7 +74,7 @@ export function useCRLText(id) {
   return useQuery({
     queryKey: queryKeys.crlText(id),
     queryFn: async () => {
-      const { data } = await api.get(`/crls/${id}/text`);
+      const { data } = await api.get('/crls/text', { params: { crl_id: id } });
       return data;
     },
     enabled: !!id,
@@ -84,15 +84,22 @@ export function useCRLText(id) {
 
 /**
  * Fetch overall statistics (total CRLs, by status, by year).
+ * Supports same filtering parameters as useCRLs.
+ *
+ * @param {Object} params - Filter parameters
+ * @param {string} [params.approval_status] - Filter by approval status
+ * @param {string} [params.letter_year] - Filter by year
+ * @param {string} [params.company_name] - Filter by company name
+ * @param {string} [params.search_text] - Full-text search
  */
-export function useStats() {
+export function useStats(params = {}) {
   return useQuery({
-    queryKey: queryKeys.stats(),
+    queryKey: queryKeys.stats(params),
     queryFn: async () => {
-      const { data } = await api.get('/stats/overview');
+      const { data } = await api.get('/stats/overview', { params });
       return data;
     },
-    staleTime: 15 * 60 * 1000, // 15 minutes (stats don't change often)
+    staleTime: 5 * 60 * 1000, // 5 minutes (shorter since filtered stats can change)
   });
 }
 
