@@ -338,27 +338,27 @@ class TestRAGService:
         # Mock embedding repo to return empty list
         monkeypatch.setattr(
             rag_service.embedding_repo,
-            "get_all_embeddings",
+            "get_embeddings_for_search",
             lambda embedding_type: []
         )
 
-        query_embedding = [0.1] * 1536
+        query_embedding = [0.1] * 3072  # text-embedding-3-large
 
         with pytest.raises(ValueError, match="No CRL embeddings found"):
             rag_service._retrieve_similar_crls(query_embedding, top_k=5)
 
     def test_retrieve_similar_crls_success(self, rag_service, monkeypatch):
         """Test _retrieve_similar_crls successfully retrieves CRLs."""
-        # Mock embedding repo
+        # Mock embedding repo with optimized method
         mock_embeddings = [
-            {"crl_id": "crl1", "embedding": [0.9] * 1536},
-            {"crl_id": "crl2", "embedding": [0.5] * 1536},
-            {"crl_id": "crl3", "embedding": [0.1] * 1536},
+            {"crl_id": "crl1", "embedding": [0.9] * 3072},
+            {"crl_id": "crl2", "embedding": [0.5] * 3072},
+            {"crl_id": "crl3", "embedding": [0.1] * 3072},
         ]
 
         monkeypatch.setattr(
             rag_service.embedding_repo,
-            "get_all_embeddings",
+            "get_embeddings_for_search",
             lambda embedding_type: mock_embeddings
         )
 
@@ -378,7 +378,7 @@ class TestRAGService:
             mock_get_by_id
         )
 
-        query_embedding = [0.8] * 1536
+        query_embedding = [0.8] * 3072  # text-embedding-3-large
         results = rag_service._retrieve_similar_crls(query_embedding, top_k=2)
 
         assert len(results) == 2

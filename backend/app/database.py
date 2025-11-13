@@ -449,6 +449,33 @@ class EmbeddingRepository:
         columns = [desc[0] for desc in self.conn.description]
         return [dict(zip(columns, row)) for row in results]
 
+    def get_embeddings_for_search(
+        self,
+        embedding_type: str = "summary"
+    ) -> List[Dict[str, Any]]:
+        """
+        Get embeddings optimized for similarity search.
+
+        Only fetches crl_id and embedding vector (not metadata),
+        which is much faster than get_all_embeddings().
+
+        Args:
+            embedding_type: Type of embedding to retrieve
+
+        Returns:
+            List of dicts with 'crl_id' and 'embedding' keys
+        """
+        results = self.conn.execute(
+            """
+            SELECT crl_id, embedding
+            FROM crl_embeddings
+            WHERE embedding_type = ?
+            """,
+            [embedding_type]
+        ).fetchall()
+
+        return [{"crl_id": row[0], "embedding": row[1]} for row in results]
+
     def exists(self, crl_id: str, embedding_type: str = "summary") -> bool:
         """Check if embedding exists for CRL."""
         result = self.conn.execute(

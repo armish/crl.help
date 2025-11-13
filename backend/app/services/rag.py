@@ -151,8 +151,8 @@ class RAGService:
         Raises:
             ValueError: If no embeddings found in database
         """
-        # Get all embeddings from database
-        all_embeddings = self.embedding_repo.get_all_embeddings(
+        # Get embeddings optimized for search (only crl_id + embedding, no metadata)
+        all_embeddings = self.embedding_repo.get_embeddings_for_search(
             embedding_type="summary"
         )
 
@@ -160,11 +160,7 @@ class RAGService:
             raise ValueError("No CRL embeddings found in database")
 
         # Prepare candidate vectors
-        candidates = []
-        for emb_record in all_embeddings:
-            crl_id = emb_record["crl_id"]
-            embedding = emb_record["embedding"]
-            candidates.append((crl_id, embedding))
+        candidates = [(emb["crl_id"], emb["embedding"]) for emb in all_embeddings]
 
         # Find top-k similar
         top_results = find_top_k_similar(
