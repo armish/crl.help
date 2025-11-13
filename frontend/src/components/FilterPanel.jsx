@@ -25,8 +25,10 @@ export default function FilterPanel() {
     ? Object.keys(stats.by_year).sort((a, b) => b.localeCompare(a))
     : [];
 
-  // Extract company names from the response
-  const companyNames = companiesData?.companies?.map(c => c.company_name) || [];
+  // Extract company names from the response and sort alphabetically
+  const companyNames = companiesData?.companies
+    ?.map(c => c.company_name)
+    .sort((a, b) => a.localeCompare(b)) || [];
 
   // Approval status options
   const approvalStatusOptions = ['Approved', 'Unapproved'];
@@ -87,6 +89,7 @@ export default function FilterPanel() {
           selectedValues={filters.letter_year || []}
           onChange={(values) => setFilter('letter_year', values)}
           maxHeight="300px"
+          enableSearch={true}
         />
 
         {/* Company Name Multi-Select */}
@@ -96,6 +99,7 @@ export default function FilterPanel() {
           selectedValues={filters.company_name || []}
           onChange={(values) => setFilter('company_name', values)}
           maxHeight="300px"
+          enableSearch={true}
         />
       </div>
 

@@ -3,6 +3,7 @@
  *
  * Features:
  * - Dropdown button that shows selection summary
+ * - Search box to filter options
  * - Scrollable checkbox list
  * - Select All / Select None buttons
  * - Click outside to close
@@ -17,21 +18,39 @@ export default function MultiSelectDropdown({
   onChange,
   placeholder = 'Select...',
   maxHeight = '300px',
+  enableSearch = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+        setSearchQuery('');
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Focus search input when dropdown opens
+  useEffect(() => {
+    if (isOpen && enableSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen, enableSearch]);
+
+  // Filter options based on search query
+  const filteredOptions = searchQuery
+    ? options.filter((option) =>
+        option.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : options;
 
   const handleToggle = (value) => {
     const newSelection = selectedValues.includes(value)
@@ -41,11 +60,15 @@ export default function MultiSelectDropdown({
   };
 
   const handleSelectAll = () => {
-    onChange([...options]);
+    // Select all filtered options
+    const newSelection = [...new Set([...selectedValues, ...filteredOptions])];
+    onChange(newSelection);
   };
 
   const handleSelectNone = () => {
-    onChange([]);
+    // Deselect all filtered options
+    const newSelection = selectedValues.filter((v) => !filteredOptions.includes(v));
+    onChange(newSelection);
   };
 
   // Display text for the button
@@ -90,6 +113,20 @@ export default function MultiSelectDropdown({
       {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg">
+          {/* Search Box */}
+          {enableSearch && (
+            <div className="p-2 border-b border-gray-200">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          )}
+
           {/* Select All/None Buttons */}
           <div className="flex gap-2 p-2 border-b border-gray-200">
             <button
@@ -113,8 +150,8 @@ export default function MultiSelectDropdown({
             className="overflow-y-auto p-2 space-y-1"
             style={{ maxHeight }}
           >
-            {options.length > 0 ? (
-              options.map((option) => (
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => (
                 <label
                   key={option}
                   className="flex items-center space-x-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer"
@@ -130,7 +167,7 @@ export default function MultiSelectDropdown({
               ))
             ) : (
               <p className="text-sm text-gray-500 text-center py-4">
-                No options available
+                {searchQuery ? 'No matches found' : 'No options available'}
               </p>
             )}
           </div>
