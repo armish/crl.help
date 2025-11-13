@@ -323,7 +323,7 @@ class CRLRepository:
         self,
         approval_status: Optional[List[str]] = None,
         letter_year: Optional[List[str]] = None,
-        company_name: Optional[str] = None,
+        company_name: Optional[List[str]] = None,
         search_text: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -332,7 +332,7 @@ class CRLRepository:
         Args:
             approval_status: Filter by approval status (can be a list)
             letter_year: Filter by year (can be a list)
-            company_name: Filter by company name (partial match)
+            company_name: Filter by company name (can be a list)
             search_text: Full-text search in text field
 
         Returns:
@@ -354,9 +354,10 @@ class CRLRepository:
             where_clauses.append(f"letter_year IN ({placeholders})")
             params.extend(letter_year)
 
-        if company_name:
-            where_clauses.append("company_name ILIKE ?")
-            params.append(f"%{company_name}%")
+        if company_name and len(company_name) > 0:
+            placeholders = ','.join(['?' for _ in company_name])
+            where_clauses.append(f"company_name IN ({placeholders})")
+            params.extend(company_name)
 
         if search_text:
             where_clauses.append("text ILIKE ?")

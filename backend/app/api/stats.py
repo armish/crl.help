@@ -20,7 +20,7 @@ crl_repo = CRLRepository()
 async def get_stats_overview(
     approval_status: List[str] = Query(None),
     letter_year: List[str] = Query(None),
-    company_name: str = None,
+    company_name: List[str] = Query(None),
     search_text: str = None
 ):
     """
