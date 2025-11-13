@@ -5,17 +5,133 @@ Uses FastAPI's TestClient for testing HTTP endpoints without
 needing to run the actual server.
 """
 
+import os
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import patch, MagicMock
+import duckdb
 
-from app.main import app
 from app.config import Settings
 
 
+@pytest.fixture(scope="module")
+def test_db():
+    """Create an in-memory test database with sample data."""
+    conn = duckdb.connect(":memory:")
+
+    # Create tables (matching app/schemas.py structure)
+    conn.execute("""
+        CREATE TABLE crls (
+            id VARCHAR PRIMARY KEY,
+            application_number VARCHAR[],
+            letter_date DATE,
+            letter_year VARCHAR,
+            letter_type VARCHAR,
+            approval_status VARCHAR,
+            company_name VARCHAR,
+            company_address VARCHAR,
+            company_rep VARCHAR,
+            approver_name VARCHAR,
+            approver_center VARCHAR[],
+            approver_title VARCHAR,
+            file_name VARCHAR,
+            text VARCHAR,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE crl_summaries (
+            id INTEGER PRIMARY KEY,
+            crl_id VARCHAR REFERENCES crls(id),
+            summary VARCHAR NOT NULL,
+            model VARCHAR NOT NULL,
+            total_tokens INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE crl_embeddings (
+            id INTEGER PRIMARY KEY,
+            crl_id VARCHAR REFERENCES crls(id),
+            embedding FLOAT[1536],
+            model VARCHAR NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE qa_annotations (
+            id INTEGER PRIMARY KEY,
+            question VARCHAR NOT NULL,
+            answer VARCHAR NOT NULL,
+            relevant_crl_ids VARCHAR[],
+            confidence FLOAT,
+            model VARCHAR NOT NULL,
+            tokens_used INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Insert sample CRL data
+    for i in range(10):
+        conn.execute("""
+            INSERT INTO crls VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """, [
+            f"test_crl_{i}",
+            [f"NDA {215818 + i}"],  # Array, not JSON string
+            f"2024-01-{15 + i:02d}",
+            "2024",
+            "COMPLETE RESPONSE",
+            "Approved" if i % 2 == 0 else "Unapproved",
+            "Pfizer Inc." if i < 3 else f"Test Pharma {i}",
+            f"123 Test St, City {i}",
+            f"Rep {i}",
+            f"Approver {i}",
+            ["Center for Drug Evaluation and Research"],  # Array, not JSON string
+            "Director",
+            f"test_file_{i}.pdf",
+            f"This is test CRL content {i} with deficiencies."
+        ])
+
+    # Insert sample summary
+    conn.execute("""
+        INSERT INTO crl_summaries VALUES (1, 'test_crl_0', 'Test summary', 'gpt-4o-mini', 100, CURRENT_TIMESTAMP)
+    """)
+
+    # Insert sample embedding
+    embedding = [0.1] * 1536
+    conn.execute("""
+        INSERT INTO crl_embeddings VALUES (1, 'test_crl_0', ?, 'text-embedding-3-small', CURRENT_TIMESTAMP)
+    """, [embedding])
+
+    yield conn
+    conn.close()
+
+
 @pytest.fixture
-def client():
-    """FastAPI test client."""
-    return TestClient(app)
+def client(test_db):
+    """FastAPI test client with mocked database."""
+    # Mock the database connection to use our test database
+    with patch('app.database.DatabaseConnection._connect') as mock_connect:
+        with patch('app.database.DatabaseConnection.get_connection', return_value=test_db):
+            with patch('app.database.get_db', return_value=test_db):
+                # Import app after patching to ensure it uses mocked database
+                from app.main import app
+
+                # Mock RAG service to avoid OpenAI API calls
+                with patch('app.api.qa.rag_service') as mock_rag:
+                    mock_rag.answer_question.return_value = {
+                        "question": "What are common deficiencies?",
+                        "answer": "Common deficiencies include CMC issues, clinical trial design problems, and manufacturing concerns.",
+                        "relevant_crls": ["test_crl_0", "test_crl_1"],
+                        "confidence": 0.85,
+                        "model": "gpt-4o-mini"
+                    }
+
+                    yield TestClient(app)
 
 
 class TestHealthAndRoot:
