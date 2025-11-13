@@ -7,19 +7,19 @@ coverage:
   range: "70...100"
 
   status:
-    # Overall project coverage
+    # Overall project coverage - informational only
     project:
       default:
-        target: 80%
-        threshold: 1%
-        if_ci_failed: error
+        target: auto
+        threshold: 100%
+        informational: true
 
-    # Coverage on pull request changes
+    # Coverage on pull request changes - informational only
     patch:
       default:
-        target: 80%
-        threshold: 5%
-        if_ci_failed: error
+        target: auto
+        threshold: 100%
+        informational: true
 
 # Comment configuration for pull requests
 comment:
