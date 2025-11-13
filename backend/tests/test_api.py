@@ -267,8 +267,8 @@ class TestCRLEndpoints:
         list_response = client.get("/api/crls?limit=1")
         crl_id = list_response.json()["items"][0]["id"]
 
-        # Get that specific CRL
-        response = client.get(f"/api/crls/{crl_id}")
+        # Get that specific CRL using query parameter
+        response = client.get(f"/api/crls/detail?crl_id={crl_id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -281,7 +281,7 @@ class TestCRLEndpoints:
 
     def test_get_crl_not_found(self, client):
         """Test getting non-existent CRL returns 404."""
-        response = client.get("/api/crls/NONEXISTENT_ID_12345")
+        response = client.get("/api/crls/detail?crl_id=NONEXISTENT_ID_12345")
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
@@ -292,8 +292,8 @@ class TestCRLEndpoints:
         list_response = client.get("/api/crls?limit=1")
         crl_id = list_response.json()["items"][0]["id"]
 
-        # Get that CRL with text
-        response = client.get(f"/api/crls/{crl_id}/text")
+        # Get that CRL with text using query parameter
+        response = client.get(f"/api/crls/text?crl_id={crl_id}")
 
         assert response.status_code == 200
         data = response.json()
