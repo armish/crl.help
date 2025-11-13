@@ -33,10 +33,14 @@ export default function FilterPanel() {
   // Approval status options
   const approvalStatusOptions = ['Approved', 'Unapproved'];
 
+  // Letter type options
+  const letterTypeOptions = ['BLA', 'NDA'];
+
   // Check if any filters are active (not "Select All")
   const hasActiveFilters =
     filters.approval_status?.length > 0 ||
     filters.letter_year?.length > 0 ||
+    filters.letter_type?.length > 0 ||
     filters.company_name?.length > 0 ||
     filters.search_text;
 
@@ -54,7 +58,7 @@ export default function FilterPanel() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Search Text Input */}
         <div>
           <label
@@ -79,6 +83,15 @@ export default function FilterPanel() {
           options={approvalStatusOptions}
           selectedValues={filters.approval_status || []}
           onChange={(values) => setFilter('approval_status', values)}
+          maxHeight="150px"
+        />
+
+        {/* Letter Type Multi-Select */}
+        <MultiSelectDropdown
+          label="Application Type"
+          options={letterTypeOptions}
+          selectedValues={filters.letter_type || []}
+          onChange={(values) => setFilter('letter_type', values)}
           maxHeight="150px"
         />
 
@@ -111,6 +124,7 @@ export default function FilterPanel() {
             {[
               filters.search_text && `Search: "${filters.search_text}"`,
               filters.approval_status?.length > 0 && `Status: ${filters.approval_status.join(', ')}`,
+              filters.letter_type?.length > 0 && `Type: ${filters.letter_type.join(', ')}`,
               filters.letter_year?.length > 0 && `Year: ${filters.letter_year.join(', ')}`,
               filters.company_name?.length > 0 && `Company: ${filters.company_name.length} selected`,
             ]

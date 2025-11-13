@@ -211,6 +211,7 @@ class CRLRepository:
         offset: int = 0,
         approval_status: Optional[str] = None,
         letter_year: Optional[str] = None,
+        letter_type: Optional[str] = None,
         company_name: Optional[str] = None,
         search_text: Optional[str] = None,
         sort_by: str = "letter_date",
@@ -243,6 +244,10 @@ class CRLRepository:
         if letter_year:
             where_clauses.append("letter_year = ?")
             params.append(letter_year)
+
+        if letter_type:
+            where_clauses.append("letter_type = ?")
+            params.append(letter_type)
 
         if company_name:
             where_clauses.append("company_name ILIKE ?")
@@ -393,6 +398,20 @@ class CRLRepository:
         """, params).fetchall()
         for year, count in year_results:
             stats["by_year"][year] = count
+
+        # By year and status (for stacked bar chart)
+        stats["by_year_and_status"] = {}
+        year_status_results = self.conn.execute(f"""
+            SELECT letter_year, approval_status, COUNT(*) as count
+            FROM crls
+            WHERE {where_clause}
+            GROUP BY letter_year, approval_status
+            ORDER BY letter_year DESC, approval_status
+        """, params).fetchall()
+        for year, status, count in year_status_results:
+            if year not in stats["by_year_and_status"]:
+                stats["by_year_and_status"][year] = {}
+            stats["by_year_and_status"][year][status] = count
 
         return stats
 

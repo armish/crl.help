@@ -67,7 +67,8 @@ async def get_stats_overview(
         return StatsOverview(
             total_crls=stats["total_crls"],
             by_status=stats["by_status"],
-            by_year=stats["by_year"]
+            by_year=stats["by_year"],
+            by_year_and_status=stats["by_year_and_status"]
         )
 
     except Exception as e:

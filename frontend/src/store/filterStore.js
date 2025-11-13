@@ -16,6 +16,7 @@ const useFilterStore = create((set) => ({
   filters: {
     approval_status: [], // Empty = all selected
     letter_year: [], // Empty = all selected
+    letter_type: [], // Empty = all selected
     company_name: [], // Changed to array, empty = all selected
     search_text: '',
   },
@@ -28,7 +29,7 @@ const useFilterStore = create((set) => ({
 
   // Pagination state
   pagination: {
-    limit: 50,
+    limit: 10,
     offset: 0,
   },
 
@@ -50,17 +51,24 @@ const useFilterStore = create((set) => ({
       filters: {
         approval_status: [],
         letter_year: [],
+        letter_type: [],
         company_name: [],
         search_text: '',
       },
-      pagination: { limit: 50, offset: 0 },
+      pagination: { limit: 10, offset: 0 },
     }),
 
-  setSort: (sort_by, sort_order) =>
-    set({
-      sort: { sort_by, sort_order },
-      pagination: { limit: 50, offset: 0 }, // Reset pagination when sorting
-    }),
+  setSort: (sort_by_or_obj, sort_order) => {
+    // Support both setSort(sort_by, sort_order) and setSort({sort_by, sort_order})
+    const sortUpdate = typeof sort_by_or_obj === 'object'
+      ? sort_by_or_obj
+      : { sort_by: sort_by_or_obj, sort_order };
+
+    return set((state) => ({
+      sort: sortUpdate,
+      pagination: { limit: state.pagination.limit, offset: 0 }, // Reset pagination when sorting
+    }));
+  },
 
   toggleSortOrder: () =>
     set((state) => ({
@@ -69,6 +77,14 @@ const useFilterStore = create((set) => ({
         sort_order: state.sort.sort_order === 'ASC' ? 'DESC' : 'ASC',
       },
       pagination: { ...state.pagination, offset: 0 },
+    })),
+
+  setPagination: (newPagination) =>
+    set((state) => ({
+      pagination: {
+        ...state.pagination,
+        ...newPagination,
+      },
     })),
 
   setPage: (page) =>

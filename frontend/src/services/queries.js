@@ -44,7 +44,7 @@ export function useCRLs(params = {}) {
       return data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    keepPreviousData: true, // Keep previous page while loading new one
+    placeholderData: (previousData) => previousData, // Keep previous page while loading new one
   });
 }
 
@@ -57,7 +57,7 @@ export function useCRL(id) {
   return useQuery({
     queryKey: queryKeys.crl(id),
     queryFn: async () => {
-      const { data } = await api.get(`/crls/${id}`);
+      const { data } = await api.get('/crls/detail', { params: { crl_id: id } });
       return data;
     },
     enabled: !!id, // Only fetch if ID is provided
@@ -74,7 +74,7 @@ export function useCRLText(id) {
   return useQuery({
     queryKey: queryKeys.crlText(id),
     queryFn: async () => {
-      const { data } = await api.get(`/crls/${id}/text`);
+      const { data } = await api.get('/crls/text', { params: { crl_id: id } });
       return data;
     },
     enabled: !!id,

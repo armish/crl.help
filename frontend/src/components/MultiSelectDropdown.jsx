@@ -152,18 +152,23 @@ export default function MultiSelectDropdown({
           >
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option) => (
-                <label
+                <div
                   key={option}
                   className="flex items-center space-x-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggle(option);
+                  }}
                 >
                   <input
                     type="checkbox"
                     checked={selectedValues.includes(option)}
-                    onChange={() => handleToggle(option)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    onChange={() => {}}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 pointer-events-none"
                   />
                   <span className="text-sm text-gray-700">{option}</span>
-                </label>
+                </div>
               ))
             ) : (
               <p className="text-sm text-gray-500 text-center py-4">
