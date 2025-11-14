@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS crls (
     letter_date DATE,
     letter_year VARCHAR,
     letter_type VARCHAR,
+    application_type VARCHAR,
     approval_status VARCHAR,
     company_name VARCHAR,
     company_address VARCHAR,
@@ -20,6 +21,10 @@ CREATE TABLE IF NOT EXISTS crls (
     approver_title VARCHAR,
     file_name VARCHAR,
     text TEXT,
+    therapeutic_category VARCHAR,
+    product_name VARCHAR,
+    indications TEXT,
+    deficiency_reason VARCHAR,
     raw_json JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -34,8 +39,7 @@ CREATE TABLE IF NOT EXISTS crl_summaries (
     summary TEXT,
     model VARCHAR,
     generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    tokens_used INTEGER,
-    FOREIGN KEY (crl_id) REFERENCES crls(id)
+    tokens_used INTEGER
 );
 """
 
@@ -47,8 +51,7 @@ CREATE TABLE IF NOT EXISTS crl_embeddings (
     embedding_type VARCHAR,
     embedding FLOAT[],
     model VARCHAR,
-    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (crl_id) REFERENCES crls(id)
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
 
@@ -81,6 +84,7 @@ CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_crls_letter_year ON crls(letter_year);",
     "CREATE INDEX IF NOT EXISTS idx_crls_company_name ON crls(company_name);",
     "CREATE INDEX IF NOT EXISTS idx_crls_letter_date ON crls(letter_date);",
+    "CREATE INDEX IF NOT EXISTS idx_crls_therapeutic_category ON crls(therapeutic_category);",
     "CREATE INDEX IF NOT EXISTS idx_crls_created_at ON crls(created_at);",
 
     # Summaries table indexes

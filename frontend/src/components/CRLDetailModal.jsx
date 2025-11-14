@@ -92,6 +92,26 @@ export default function CRLDetailModal({ crlId, isOpen, onClose }) {
 
             {crl && (
               <div className="space-y-6">
+                {/* Under Review Warning - Show when no application number */}
+                {(!crl.application_number ||
+                  (Array.isArray(crl.application_number) && crl.application_number.length === 0) ||
+                  crl.application_number === 'N/A') && (
+                  <div className="bg-amber-50 border border-amber-300 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <svg className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div className="flex-1">
+                        <h3 className="text-sm font-semibold text-amber-900 mb-1">CRL Under Review</h3>
+                        <p className="text-sm text-amber-800">
+                          This Complete Response Letter is currently under review. Full details have not been released yet by the FDA.
+                          The information shown below may be incomplete.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Metadata Section */}
                 <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -133,6 +153,26 @@ export default function CRLDetailModal({ crlId, isOpen, onClose }) {
                       <label className="text-xs font-medium text-gray-500 uppercase">Company</label>
                       <p className="text-sm text-gray-900 mt-1">{crl.company_name || 'N/A'}</p>
                     </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 uppercase">Therapeutic Category</label>
+                      <p className="text-sm text-gray-900 mt-1">{crl.therapeutic_category || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 uppercase">Deficiency Reason</label>
+                      <p className="text-sm text-gray-900 mt-1">{crl.deficiency_reason || 'N/A'}</p>
+                    </div>
+                    {crl.product_name && (
+                      <div className="md:col-span-2">
+                        <label className="text-xs font-medium text-gray-500 uppercase">Product Name</label>
+                        <p className="text-sm text-gray-900 mt-1">{crl.product_name}</p>
+                      </div>
+                    )}
+                    {crl.indications && (
+                      <div className="md:col-span-2">
+                        <label className="text-xs font-medium text-gray-500 uppercase">Indications</label>
+                        <p className="text-sm text-gray-900 mt-1">{crl.indications}</p>
+                      </div>
+                    )}
                     <div className="md:col-span-2">
                       <label className="text-xs font-medium text-gray-500 uppercase">FDA Center</label>
                       <p className="text-sm text-gray-900 mt-1">
@@ -155,7 +195,7 @@ export default function CRLDetailModal({ crlId, isOpen, onClose }) {
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }`}
                     >
-                      AI Summary
+                      Executive Summary
                     </button>
                     <button
                       onClick={() => setActiveTab('text')}
@@ -182,15 +222,10 @@ export default function CRLDetailModal({ crlId, isOpen, onClose }) {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                               </svg>
                               <div className="flex-1">
-                                <h3 className="text-sm font-semibold text-blue-900 mb-2">AI-Generated Summary</h3>
-                                <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                                <h3 className="text-sm font-semibold text-blue-900 mb-2">Executive Summary</h3>
+                                <div className="text-base text-gray-700 whitespace-pre-wrap">
                                   {crl.summary}
                                 </div>
-                                {crl.summary_model && (
-                                  <p className="text-xs text-blue-600 mt-3">
-                                    Generated by {crl.summary_model}
-                                  </p>
-                                )}
                               </div>
                             </div>
                           </div>

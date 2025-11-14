@@ -21,6 +21,7 @@ class CRLBase(BaseModel):
     letter_date: str
     letter_year: str
     letter_type: Optional[str] = None
+    application_type: Optional[str] = None
     approval_status: str
     company_name: str
     approver_center: List[str]
@@ -28,7 +29,8 @@ class CRLBase(BaseModel):
 
 class CRLListItem(CRLBase):
     """CRL item in list view (subset of fields for performance)."""
-    pass
+    therapeutic_category: Optional[str] = None
+    deficiency_reason: Optional[str] = None
 
 
 class CRLDetail(CRLBase):
@@ -39,6 +41,10 @@ class CRLDetail(CRLBase):
     approver_name: Optional[str] = None
     approver_title: Optional[str] = None
     file_name: Optional[str] = None
+    therapeutic_category: Optional[str] = None
+    product_name: Optional[str] = None
+    indications: Optional[str] = None
+    deficiency_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -89,6 +95,14 @@ class StatsOverview(BaseModel):
     by_status: dict  # {"Approved": 295, "Unapproved": 97}
     by_year: dict  # {"2024": 67, "2023": 27, ...}
     by_year_and_status: dict  # {"2024": {"Approved": 50, "Unapproved": 17}, ...}
+    by_application_type: dict  # {"NDA": 302, "BLA": 83, ...}
+    by_letter_type: dict  # {"BLA": 120, "NDA": 95, ...}
+    by_therapeutic_category: dict  # {"Small molecules": 150, "Biologics - proteins": 80, ...}
+    by_deficiency_reason: dict  # {"Clinical": 200, "CMC / Quality": 100, ...}
+    by_year_and_application_type: dict  # {"2024": {"NDA": 45, "BLA": 22}, ...}
+    by_year_and_letter_type: dict  # {"2024": {"BLA": 30, "NDA": 20}, ...}
+    by_year_and_therapeutic_category: dict  # {"2024": {"Small molecules": 25, "Biologics": 15}, ...}
+    by_year_and_deficiency_reason: dict  # {"2024": {"Clinical": 30, "CMC / Quality": 20}, ...}
 
 
 class CompanyStats(BaseModel):

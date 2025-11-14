@@ -16,7 +16,10 @@ const useFilterStore = create((set) => ({
   filters: {
     approval_status: [], // Empty = all selected
     letter_year: [], // Empty = all selected
+    application_type: [], // Empty = all selected
     letter_type: [], // Empty = all selected
+    therapeutic_category: [], // Empty = all selected
+    deficiency_reason: [], // Empty = all selected
     company_name: [], // Changed to array, empty = all selected
     search_text: '',
   },
@@ -51,7 +54,10 @@ const useFilterStore = create((set) => ({
       filters: {
         approval_status: [],
         letter_year: [],
+        application_type: [],
         letter_type: [],
+        therapeutic_category: [],
+        deficiency_reason: [],
         company_name: [],
         search_text: '',
       },

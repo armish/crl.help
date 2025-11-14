@@ -28,6 +28,25 @@ export default function CRLTable() {
   const [selectedCRLId, setSelectedCRLId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Column visibility state
+  const [columnVisibility, setColumnVisibility] = useState({
+    application_number: true,
+    letter_date: true,
+    company_name: true,
+    therapeutic_category: true,
+    deficiency_reason: true,
+    actions: true,
+    // Hidden by default
+    letter_year: false,
+    application_type: false,
+    letter_type: false,
+    approval_status: false,
+    approver_center: false,
+  });
+
+  // Settings menu state
+  const [showSettings, setShowSettings] = useState(false);
+
   // Ref for scrolling to table top
   const tableTopRef = useRef(null);
 
@@ -65,11 +84,6 @@ export default function CRLTable() {
         },
       },
       {
-        accessorKey: 'company_name',
-        header: 'Company',
-        cell: (info) => info.getValue() || 'N/A',
-      },
-      {
         accessorKey: 'letter_date',
         header: 'Date',
         cell: (info) => {
@@ -78,13 +92,33 @@ export default function CRLTable() {
         },
       },
       {
+        accessorKey: 'company_name',
+        header: 'Company',
+        cell: (info) => info.getValue() || 'N/A',
+      },
+      {
+        accessorKey: 'therapeutic_category',
+        header: 'Therapeutic Category',
+        cell: (info) => info.getValue() || 'N/A',
+      },
+      {
+        accessorKey: 'deficiency_reason',
+        header: 'Deficiency Reason',
+        cell: (info) => info.getValue() || 'N/A',
+      },
+      {
         accessorKey: 'letter_year',
         header: 'Year',
         cell: (info) => info.getValue() || 'N/A',
       },
       {
+        accessorKey: 'application_type',
+        header: 'Application Type',
+        cell: (info) => info.getValue() || 'N/A',
+      },
+      {
         accessorKey: 'letter_type',
-        header: 'Type',
+        header: 'Letter Type',
         cell: (info) => info.getValue() || 'N/A',
       },
       {
@@ -92,7 +126,7 @@ export default function CRLTable() {
         header: 'Status',
         cell: (info) => {
           const status = info.getValue();
-          const colorClass = status === 'Approved' ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50';
+          const colorClass = status === 'Approved' ? 'text-green-700 bg-green-50' : 'text-orange-700 bg-orange-50';
           return (
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
               {status || 'Unknown'}
@@ -144,7 +178,9 @@ export default function CRLTable() {
         pageSize: pagination.limit,
       },
       sorting: [{ id: sort.sort_by, desc: sort.sort_order === 'DESC' }],
+      columnVisibility,
     },
+    onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: (updater) => {
       const currentPagination = { pageIndex: Math.floor(pagination.offset / pagination.limit), pageSize: pagination.limit };
       const newPagination = typeof updater === 'function'
@@ -244,6 +280,37 @@ export default function CRLTable() {
           </span>{' '}
           of <span className="font-medium">{data.total}</span> results
         </p>
+        <div className="relative">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center space-x-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            <span>Columns</span>
+          </button>
+          {showSettings && (
+            <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-10 p-3">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">Show Columns</h4>
+              <div className="space-y-2">
+                {table.getAllLeafColumns().filter(column => column.id !== 'actions').map(column => (
+                  <label key={column.id} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={column.getIsVisible()}
+                      onChange={column.getToggleVisibilityHandler()}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">
+                      {column.columnDef.header}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}

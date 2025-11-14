@@ -20,6 +20,9 @@ crl_repo = CRLRepository()
 async def get_stats_overview(
     approval_status: List[str] = Query(None),
     letter_year: List[str] = Query(None),
+    letter_type: List[str] = Query(None),
+    therapeutic_category: List[str] = Query(None),
+    deficiency_reason: List[str] = Query(None),
     company_name: List[str] = Query(None),
     search_text: str = None
 ):
@@ -35,6 +38,9 @@ async def get_stats_overview(
 
     - **approval_status**: Filter by approval status (e.g., "Approved", "Unapproved")
     - **letter_year**: Filter by year (e.g., "2024")
+    - **letter_type**: Filter by letter type (e.g., "BLA", "NDA")
+    - **therapeutic_category**: Filter by therapeutic category
+    - **deficiency_reason**: Filter by deficiency reason
     - **company_name**: Filter by company name (partial match)
     - **search_text**: Full-text search in letter text
 
@@ -60,6 +66,9 @@ async def get_stats_overview(
         stats = crl_repo.get_stats(
             approval_status=approval_status,
             letter_year=letter_year,
+            letter_type=letter_type,
+            therapeutic_category=therapeutic_category,
+            deficiency_reason=deficiency_reason,
             company_name=company_name,
             search_text=search_text
         )
@@ -68,7 +77,15 @@ async def get_stats_overview(
             total_crls=stats["total_crls"],
             by_status=stats["by_status"],
             by_year=stats["by_year"],
-            by_year_and_status=stats["by_year_and_status"]
+            by_year_and_status=stats["by_year_and_status"],
+            by_application_type=stats["by_application_type"],
+            by_letter_type=stats["by_letter_type"],
+            by_therapeutic_category=stats["by_therapeutic_category"],
+            by_deficiency_reason=stats["by_deficiency_reason"],
+            by_year_and_application_type=stats["by_year_and_application_type"],
+            by_year_and_letter_type=stats["by_year_and_letter_type"],
+            by_year_and_therapeutic_category=stats["by_year_and_therapeutic_category"],
+            by_year_and_deficiency_reason=stats["by_year_and_deficiency_reason"]
         )
 
     except Exception as e:

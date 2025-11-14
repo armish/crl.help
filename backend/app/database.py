@@ -211,7 +211,10 @@ class CRLRepository:
         offset: int = 0,
         approval_status: Optional[str] = None,
         letter_year: Optional[str] = None,
+        application_type: Optional[str] = None,
         letter_type: Optional[str] = None,
+        therapeutic_category: Optional[str] = None,
+        deficiency_reason: Optional[str] = None,
         company_name: Optional[str] = None,
         search_text: Optional[str] = None,
         sort_by: str = "letter_date",
@@ -225,6 +228,10 @@ class CRLRepository:
             offset: Number of records to skip
             approval_status: Filter by approval status
             letter_year: Filter by year
+            application_type: Filter by application type (BLA, NDA, etc.)
+            letter_type: Filter by letter type
+            therapeutic_category: Filter by therapeutic category
+            deficiency_reason: Filter by deficiency reason
             company_name: Filter by company name (partial match)
             search_text: Full-text search in text field
             sort_by: Column to sort by
@@ -245,9 +252,21 @@ class CRLRepository:
             where_clauses.append("letter_year = ?")
             params.append(letter_year)
 
+        if application_type:
+            where_clauses.append("application_type = ?")
+            params.append(application_type)
+
         if letter_type:
             where_clauses.append("letter_type = ?")
             params.append(letter_type)
+
+        if therapeutic_category:
+            where_clauses.append("therapeutic_category = ?")
+            params.append(therapeutic_category)
+
+        if deficiency_reason:
+            where_clauses.append("deficiency_reason = ?")
+            params.append(deficiency_reason)
 
         if company_name:
             where_clauses.append("company_name ILIKE ?")
@@ -328,6 +347,9 @@ class CRLRepository:
         self,
         approval_status: Optional[List[str]] = None,
         letter_year: Optional[List[str]] = None,
+        letter_type: Optional[List[str]] = None,
+        therapeutic_category: Optional[List[str]] = None,
+        deficiency_reason: Optional[List[str]] = None,
         company_name: Optional[List[str]] = None,
         search_text: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -337,6 +359,9 @@ class CRLRepository:
         Args:
             approval_status: Filter by approval status (can be a list)
             letter_year: Filter by year (can be a list)
+            letter_type: Filter by letter type (can be a list)
+            therapeutic_category: Filter by therapeutic category (can be a list)
+            deficiency_reason: Filter by deficiency reason (can be a list)
             company_name: Filter by company name (can be a list)
             search_text: Full-text search in text field
 
@@ -358,6 +383,21 @@ class CRLRepository:
             placeholders = ','.join(['?' for _ in letter_year])
             where_clauses.append(f"letter_year IN ({placeholders})")
             params.extend(letter_year)
+
+        if letter_type and len(letter_type) > 0:
+            placeholders = ','.join(['?' for _ in letter_type])
+            where_clauses.append(f"letter_type IN ({placeholders})")
+            params.extend(letter_type)
+
+        if therapeutic_category and len(therapeutic_category) > 0:
+            placeholders = ','.join(['?' for _ in therapeutic_category])
+            where_clauses.append(f"therapeutic_category IN ({placeholders})")
+            params.extend(therapeutic_category)
+
+        if deficiency_reason and len(deficiency_reason) > 0:
+            placeholders = ','.join(['?' for _ in deficiency_reason])
+            where_clauses.append(f"deficiency_reason IN ({placeholders})")
+            params.extend(deficiency_reason)
 
         if company_name and len(company_name) > 0:
             placeholders = ','.join(['?' for _ in company_name])
@@ -412,6 +452,110 @@ class CRLRepository:
             if year not in stats["by_year_and_status"]:
                 stats["by_year_and_status"][year] = {}
             stats["by_year_and_status"][year][status] = count
+
+        # By application type
+        stats["by_application_type"] = {}
+        application_type_results = self.conn.execute(f"""
+            SELECT application_type, COUNT(*) as count
+            FROM crls
+            WHERE {where_clause} AND application_type IS NOT NULL AND application_type != ''
+            GROUP BY application_type
+            ORDER BY count DESC
+        """, params).fetchall()
+        for app_type, count in application_type_results:
+            stats["by_application_type"][app_type] = count
+
+        # By letter type
+        stats["by_letter_type"] = {}
+        letter_type_results = self.conn.execute(f"""
+            SELECT letter_type, COUNT(*) as count
+            FROM crls
+            WHERE {where_clause} AND letter_type IS NOT NULL AND letter_type != ''
+            GROUP BY letter_type
+            ORDER BY count DESC
+        """, params).fetchall()
+        for letter_type, count in letter_type_results:
+            stats["by_letter_type"][letter_type] = count
+
+        # By therapeutic category
+        stats["by_therapeutic_category"] = {}
+        therapeutic_category_results = self.conn.execute(f"""
+            SELECT therapeutic_category, COUNT(*) as count
+            FROM crls
+            WHERE {where_clause} AND therapeutic_category IS NOT NULL AND therapeutic_category != ''
+            GROUP BY therapeutic_category
+            ORDER BY count DESC
+        """, params).fetchall()
+        for category, count in therapeutic_category_results:
+            stats["by_therapeutic_category"][category] = count
+
+        # By deficiency reason
+        stats["by_deficiency_reason"] = {}
+        deficiency_reason_results = self.conn.execute(f"""
+            SELECT deficiency_reason, COUNT(*) as count
+            FROM crls
+            WHERE {where_clause} AND deficiency_reason IS NOT NULL AND deficiency_reason != ''
+            GROUP BY deficiency_reason
+            ORDER BY count DESC
+        """, params).fetchall()
+        for reason, count in deficiency_reason_results:
+            stats["by_deficiency_reason"][reason] = count
+
+        # By year and application type (for stacked bar chart)
+        stats["by_year_and_application_type"] = {}
+        year_application_type_results = self.conn.execute(f"""
+            SELECT letter_year, application_type, COUNT(*) as count
+            FROM crls
+            WHERE {where_clause} AND application_type IS NOT NULL AND application_type != ''
+            GROUP BY letter_year, application_type
+            ORDER BY letter_year DESC, application_type
+        """, params).fetchall()
+        for year, app_type, count in year_application_type_results:
+            if year not in stats["by_year_and_application_type"]:
+                stats["by_year_and_application_type"][year] = {}
+            stats["by_year_and_application_type"][year][app_type] = count
+
+        # By year and letter type (for stacked bar chart)
+        stats["by_year_and_letter_type"] = {}
+        year_letter_type_results = self.conn.execute(f"""
+            SELECT letter_year, letter_type, COUNT(*) as count
+            FROM crls
+            WHERE {where_clause} AND letter_type IS NOT NULL AND letter_type != ''
+            GROUP BY letter_year, letter_type
+            ORDER BY letter_year DESC, letter_type
+        """, params).fetchall()
+        for year, letter_type, count in year_letter_type_results:
+            if year not in stats["by_year_and_letter_type"]:
+                stats["by_year_and_letter_type"][year] = {}
+            stats["by_year_and_letter_type"][year][letter_type] = count
+
+        # By year and therapeutic category (for stacked bar chart)
+        stats["by_year_and_therapeutic_category"] = {}
+        year_therapeutic_category_results = self.conn.execute(f"""
+            SELECT letter_year, therapeutic_category, COUNT(*) as count
+            FROM crls
+            WHERE {where_clause} AND therapeutic_category IS NOT NULL AND therapeutic_category != ''
+            GROUP BY letter_year, therapeutic_category
+            ORDER BY letter_year DESC, therapeutic_category
+        """, params).fetchall()
+        for year, category, count in year_therapeutic_category_results:
+            if year not in stats["by_year_and_therapeutic_category"]:
+                stats["by_year_and_therapeutic_category"][year] = {}
+            stats["by_year_and_therapeutic_category"][year][category] = count
+
+        # By year and deficiency reason (for stacked bar chart)
+        stats["by_year_and_deficiency_reason"] = {}
+        year_deficiency_reason_results = self.conn.execute(f"""
+            SELECT letter_year, deficiency_reason, COUNT(*) as count
+            FROM crls
+            WHERE {where_clause} AND deficiency_reason IS NOT NULL AND deficiency_reason != ''
+            GROUP BY letter_year, deficiency_reason
+            ORDER BY letter_year DESC, deficiency_reason
+        """, params).fetchall()
+        for year, reason, count in year_deficiency_reason_results:
+            if year not in stats["by_year_and_deficiency_reason"]:
+                stats["by_year_and_deficiency_reason"][year] = {}
+            stats["by_year_and_deficiency_reason"][year][reason] = count
 
         return stats
 
