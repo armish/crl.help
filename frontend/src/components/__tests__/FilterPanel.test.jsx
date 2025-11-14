@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { renderWithClient } from '../../test/utils';
 import FilterPanel from '../FilterPanel';
 import * as queries from '../../services/queries';
@@ -59,19 +59,12 @@ describe('FilterPanel', () => {
     expect(screen.getByText('Filters')).toBeInTheDocument();
   });
 
-  it('renders search text input', () => {
+  it('renders all new filter dropdowns', () => {
     renderWithClient(<FilterPanel />);
 
-    expect(screen.getByLabelText(/search/i)).toBeInTheDocument();
-  });
-
-  it('search text input updates filter', () => {
-    renderWithClient(<FilterPanel />);
-
-    const searchInput = screen.getByLabelText(/search/i);
-    fireEvent.change(searchInput, { target: { value: 'test search' } });
-
-    expect(useFilterStore.getState().filters.search_text).toBe('test search');
+    // Check for new filter dropdowns
+    expect(screen.getByText(/therapeutic category/i)).toBeInTheDocument();
+    expect(screen.getByText(/deficiency reason/i)).toBeInTheDocument();
   });
 
   it('renders multi-select dropdowns for filters', () => {
@@ -85,11 +78,12 @@ describe('FilterPanel', () => {
   });
 
   it('clear filters button appears when filters are active', () => {
-    renderWithClient(<FilterPanel />);
+    // Set a filter programmatically before rendering
+    act(() => {
+      useFilterStore.getState().setFilter('approval_status', ['Approved']);
+    });
 
-    // Set a filter
-    const searchInput = screen.getByLabelText(/search/i);
-    fireEvent.change(searchInput, { target: { value: 'test' } });
+    renderWithClient(<FilterPanel />);
 
     expect(screen.getByText('Clear all')).toBeInTheDocument();
   });
@@ -101,11 +95,13 @@ describe('FilterPanel', () => {
   });
 
   it('clear filters button clears all filters', () => {
-    renderWithClient(<FilterPanel />);
+    // Set filters programmatically
+    act(() => {
+      useFilterStore.getState().setFilter('approval_status', ['Approved']);
+      useFilterStore.getState().setFilter('letter_year', ['2023']);
+    });
 
-    // Set search filter
-    const searchInput = screen.getByLabelText(/search/i);
-    fireEvent.change(searchInput, { target: { value: 'test' } });
+    renderWithClient(<FilterPanel />);
 
     const clearButton = screen.getByText('Clear all');
     fireEvent.click(clearButton);
@@ -114,7 +110,10 @@ describe('FilterPanel', () => {
     expect(state.filters.search_text).toBe('');
     expect(state.filters.approval_status).toEqual([]);
     expect(state.filters.letter_year).toEqual([]);
+    expect(state.filters.application_type).toEqual([]);
     expect(state.filters.letter_type).toEqual([]);
+    expect(state.filters.therapeutic_category).toEqual([]);
+    expect(state.filters.deficiency_reason).toEqual([]);
     expect(state.filters.company_name).toEqual([]);
   });
 
