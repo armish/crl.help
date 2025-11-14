@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS crls (
     letter_date DATE,
     letter_year VARCHAR,
     letter_type VARCHAR,
-    application_type VARCHAR,
     approval_status VARCHAR,
     company_name VARCHAR,
     company_address VARCHAR,

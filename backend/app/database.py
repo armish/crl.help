@@ -196,7 +196,10 @@ class CRLRepository:
             Optional[Dict]: CRL data or None if not found
         """
         result = self.conn.execute(
-            "SELECT * FROM crls WHERE id = ?",
+            """SELECT
+                *,
+                regexp_extract(application_number[1], '^([A-Z]+)', 1) as application_type
+            FROM crls WHERE id = ?""",
             [crl_id]
         ).fetchone()
 
@@ -253,7 +256,7 @@ class CRLRepository:
             params.append(letter_year)
 
         if application_type:
-            where_clauses.append("application_type = ?")
+            where_clauses.append("regexp_extract(application_number[1], '^([A-Z]+)', 1) = ?")
             params.append(application_type)
 
         if letter_type:
@@ -284,7 +287,10 @@ class CRLRepository:
 
         # Get paginated results
         query = f"""
-        SELECT * FROM crls
+        SELECT
+            *,
+            regexp_extract(application_number[1], '^([A-Z]+)', 1) as application_type
+        FROM crls
         WHERE {where_clause}
         ORDER BY {sort_by} {sort_order}
         LIMIT ? OFFSET ?
@@ -453,12 +459,17 @@ class CRLRepository:
                 stats["by_year_and_status"][year] = {}
             stats["by_year_and_status"][year][status] = count
 
-        # By application type
+        # By application type (extracted from application_number)
         stats["by_application_type"] = {}
         application_type_results = self.conn.execute(f"""
-            SELECT application_type, COUNT(*) as count
+            SELECT
+                regexp_extract(application_number[1], '^([A-Z]+)', 1) as application_type,
+                COUNT(*) as count
             FROM crls
-            WHERE {where_clause} AND application_type IS NOT NULL AND application_type != ''
+            WHERE {where_clause}
+            AND application_number IS NOT NULL
+            AND len(application_number) > 0
+            AND regexp_extract(application_number[1], '^([A-Z]+)', 1) IS NOT NULL
             GROUP BY application_type
             ORDER BY count DESC
         """, params).fetchall()
@@ -504,9 +515,15 @@ class CRLRepository:
         # By year and application type (for stacked bar chart)
         stats["by_year_and_application_type"] = {}
         year_application_type_results = self.conn.execute(f"""
-            SELECT letter_year, application_type, COUNT(*) as count
+            SELECT
+                letter_year,
+                regexp_extract(application_number[1], '^([A-Z]+)', 1) as application_type,
+                COUNT(*) as count
             FROM crls
-            WHERE {where_clause} AND application_type IS NOT NULL AND application_type != ''
+            WHERE {where_clause}
+            AND application_number IS NOT NULL
+            AND len(application_number) > 0
+            AND regexp_extract(application_number[1], '^([A-Z]+)', 1) IS NOT NULL
             GROUP BY letter_year, application_type
             ORDER BY letter_year DESC, application_type
         """, params).fetchall()
