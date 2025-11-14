@@ -32,6 +32,7 @@ async def list_crls(
     deficiency_reason: Optional[str] = Query(None, description="Filter by deficiency reason"),
     company_name: Optional[str] = Query(None, description="Filter by company name (partial match)"),
     search_text: Optional[str] = Query(None, description="Full-text search in letter content"),
+    include_summary: bool = Query(False, description="Include AI-generated summaries"),
     sort_by: str = Query("letter_date", description="Field to sort by"),
     sort_order: str = Query("DESC", description="Sort direction (ASC or DESC)"),
     limit: int = Query(50, ge=1, le=100, description="Number of results per page"),
@@ -79,6 +80,13 @@ async def list_crls(
             sort_order=sort_order
         )
 
+        # Fetch summaries if requested
+        summary_dict = {}
+        if include_summary:
+            crl_ids = [crl["id"] for crl in crls]
+            summaries = summary_repo.get_summaries_by_crl_ids(crl_ids)
+            summary_dict = {s["crl_id"]: s["summary"] for s in summaries}
+
         # Convert to response model
         items = [
             CRLListItem(
@@ -92,7 +100,8 @@ async def list_crls(
                 company_name=crl["company_name"] or "",
                 approver_center=crl["approver_center"] or [],
                 therapeutic_category=crl.get("therapeutic_category"),
-                deficiency_reason=crl.get("deficiency_reason")
+                deficiency_reason=crl.get("deficiency_reason"),
+                summary=summary_dict.get(crl["id"]) if include_summary else None
             )
             for crl in crls
         ]

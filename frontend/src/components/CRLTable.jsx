@@ -42,6 +42,7 @@ export default function CRLTable() {
     letter_type: false,
     approval_status: false,
     approver_center: false,
+    summary: false,
   });
 
   // Settings menu state
@@ -56,8 +57,14 @@ export default function CRLTable() {
   // Get filter parameters for API call
   const filterParams = useQueryParams();
 
+  // Add include_summary parameter based on column visibility
+  const queryParams = {
+    ...filterParams,
+    include_summary: columnVisibility.summary,
+  };
+
   // Fetch CRLs with current filters, pagination, and sorting
-  const { data, isLoading, error } = useCRLs(filterParams);
+  const { data, isLoading, error } = useCRLs(queryParams);
 
   // Scroll to table top when pagination changes (but not on initial load)
   const previousOffsetRef = useRef(pagination.offset);
@@ -140,6 +147,16 @@ export default function CRLTable() {
         cell: (info) => {
           const centers = info.getValue();
           return Array.isArray(centers) ? centers.join(', ') : centers || 'N/A';
+        },
+      },
+      {
+        accessorKey: 'summary',
+        header: 'Executive summary',
+        cell: (info) => {
+          const summary = info.getValue();
+          if (!summary) return 'N/A';
+          // Truncate summary for table display
+          return summary.length > 200 ? `${summary.substring(0, 200)}...` : summary;
         },
       },
       {

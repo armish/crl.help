@@ -15,8 +15,11 @@ from app.database import init_db, get_db
 from app.models import HealthResponse
 from app.utils.logging_config import get_logger
 
-# Import API routers
-from app.api import crls, stats, qa
+# Import API routers with aliases to avoid DuckDB namespace conflicts
+from app.api import crls as crls_api
+from app.api import stats as stats_api
+from app.api import qa as qa_api
+from app.api import export as export_api
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -150,10 +153,11 @@ async def health_check():
     try:
         conn = get_db()
 
-        # Get counts
-        crl_count = conn.execute("SELECT COUNT(*) FROM crls").fetchone()[0]
-        summary_count = conn.execute("SELECT COUNT(*) FROM crl_summaries").fetchone()[0]
-        embedding_count = conn.execute("SELECT COUNT(*) FROM crl_embeddings").fetchone()[0]
+        # Get counts using explicit schema to avoid DuckDB replacement scans
+        # which can incorrectly resolve Python objects named 'crls' in the call stack
+        crl_count = conn.execute("SELECT COUNT(*) FROM main.crls").fetchone()[0]
+        summary_count = conn.execute("SELECT COUNT(*) FROM main.crl_summaries").fetchone()[0]
+        embedding_count = conn.execute("SELECT COUNT(*) FROM main.crl_embeddings").fetchone()[0]
 
         return HealthResponse(
             status="healthy",
@@ -177,9 +181,10 @@ async def health_check():
 # Include API Routers
 # ============================================================================
 
-app.include_router(crls.router, prefix=f"{settings.api_prefix}/crls", tags=["CRLs"])
-app.include_router(stats.router, prefix=f"{settings.api_prefix}/stats", tags=["Statistics"])
-app.include_router(qa.router, prefix=f"{settings.api_prefix}/qa", tags=["Q&A"])
+app.include_router(crls_api.router, prefix=f"{settings.api_prefix}/crls", tags=["CRLs"])
+app.include_router(stats_api.router, prefix=f"{settings.api_prefix}/stats", tags=["Statistics"])
+app.include_router(qa_api.router, prefix=f"{settings.api_prefix}/qa", tags=["Q&A"])
+app.include_router(export_api.router, prefix=f"{settings.api_prefix}/export", tags=["Export"])
 
 
 # ============================================================================

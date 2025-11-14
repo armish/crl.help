@@ -618,6 +618,24 @@ class SummaryRepository:
         ).fetchone()
         return result[0] > 0
 
+    def get_summaries_by_crl_ids(self, crl_ids: List[str]) -> List[Dict[str, Any]]:
+        """Get summaries for multiple CRLs."""
+        if not crl_ids:
+            return []
+
+        # Build parameterized query for batch fetch
+        placeholders = ",".join(["?" for _ in crl_ids])
+        query = f"SELECT * FROM crl_summaries WHERE crl_id IN ({placeholders})"
+
+        results = self.conn.execute(query, crl_ids).fetchall()
+
+        summaries = []
+        if results:
+            columns = [desc[0] for desc in self.conn.description]
+            summaries = [dict(zip(columns, row)) for row in results]
+
+        return summaries
+
 
 class EmbeddingRepository:
     """Repository for embedding operations."""
