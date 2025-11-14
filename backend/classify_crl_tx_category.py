@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Script to enrich CRLs with therapeutic category classification using AI.
+Script to classify CRLs by therapeutic category using AI.
 
-This script analyzes CRL text and classifies therapeutic category into one of:
+This script analyzes the full CRL text and classifies therapeutic category into one of:
 - Small molecules
 - Biologics - proteins
 - Vaccines
@@ -15,7 +15,7 @@ This script analyzes CRL text and classifies therapeutic category into one of:
 - Other
 
 Usage:
-    python enrich_crls.py [options]
+    python classify_crl_tx_category.py [options]
 
 Options:
     --regenerate        Reclassify ALL CRLs (including existing ones)
@@ -25,13 +25,13 @@ Options:
 
 Examples:
     # Classify new CRLs only (incremental)
-    python enrich_crls.py
+    python classify_crl_tx_category.py
 
     # Process first 10 CRLs
-    python enrich_crls.py --limit 10
+    python classify_crl_tx_category.py --limit 10
 
     # Reclassify ALL CRLs (use with caution!)
-    python enrich_crls.py --regenerate
+    python classify_crl_tx_category.py --regenerate
 
     --help, -h    Show this help message and exit
 """
@@ -113,28 +113,44 @@ def get_crls_needing_classification(conn, regenerate: bool = False, limit: int =
     logger.info("Fetching CRLs needing therapeutic category classification...")
 
     if regenerate:
-        query = "SELECT c.id, s.summary FROM crls c INNER JOIN crl_summaries s ON c.id = s.crl_id WHERE s.summary IS NOT NULL AND s.summary != '' ORDER BY c.letter_date DESC"
+        query = """
+            SELECT id, text FROM crls
+            WHERE text IS NOT NULL AND text != ''
+            ORDER BY letter_date DESC
+        """
     else:
         query = """
-            SELECT c.id, s.summary FROM crls c INNER JOIN crl_summaries s ON c.id = s.crl_id
-            WHERE (c.therapeutic_category IS NULL OR c.therapeutic_category = '')
-            AND s.summary IS NOT NULL AND s.summary != ''
-            ORDER BY c.letter_date DESC
+            SELECT id, text FROM crls
+            WHERE (therapeutic_category IS NULL OR therapeutic_category = '')
+            AND text IS NOT NULL AND text != ''
+            ORDER BY letter_date DESC
         """
 
     if limit:
         query += f" LIMIT {limit}"
 
     results = conn.execute(query).fetchall()
-    crls = [{"id": row[0], "summary": row[1]} for row in results]
+    crls = [{"id": row[0], "text": row[1]} for row in results]
 
     logger.info(f"Found {len(crls)} CRLs needing therapeutic category classification")
     return crls
 
 
-def classify_therapeutic_category(summary: str, client: OpenAIClient) -> str:
-    """Classify the therapeutic category using OpenAI with clarification retry."""
-    prompt = f"""Analyze this FDA Complete Response Letter summary and classify the product's therapeutic category into ONE of these categories:
+def classify_therapeutic_category(text: str, client: OpenAIClient) -> str:
+    """Classify the therapeutic category using OpenAI with clarification retry.
+
+    Args:
+        text: Full CRL text (will be truncated to first 8000 chars if needed)
+        client: OpenAI client instance
+
+    Returns:
+        Therapeutic category classification
+    """
+    # Use up to 8000 characters from the beginning of the text
+    # This captures the most relevant information while staying within token limits
+    text_excerpt = text[:8000] if len(text) > 8000 else text
+
+    prompt = f"""Analyze this FDA Complete Response Letter text and classify the product's therapeutic category into ONE of these categories:
 
 1. Small molecules - Traditional chemical drugs, synthetic compounds
 2. Biologics - proteins - Protein-based biologics, monoclonal antibodies, enzymes
@@ -147,8 +163,8 @@ def classify_therapeutic_category(summary: str, client: OpenAIClient) -> str:
 9. Devices/IVDs - Medical devices, in vitro diagnostics
 10. Other - Products that don't fit above categories
 
-CRL Summary:
-{summary}
+CRL Text (beginning):
+{text_excerpt}
 
 Respond with ONLY the category name, nothing else."""
 
@@ -231,10 +247,10 @@ async def process_single_crl(
 ) -> Dict[str, Any]:
     """Process a single CRL asynchronously."""
     crl_id = crl["id"]
-    crl_summary = crl.get("summary", "")
+    crl_text = crl.get("text", "")
 
-    if not crl_summary or len(crl_summary.strip()) < 50:
-        return {"status": "skipped", "crl_id": crl_id, "reason": "insufficient summary"}
+    if not crl_text or len(crl_text.strip()) < 100:
+        return {"status": "skipped", "crl_id": crl_id, "reason": "insufficient text"}
 
     async with semaphore:
         try:
@@ -243,7 +259,7 @@ async def process_single_crl(
             classification = await loop.run_in_executor(
                 None,
                 classify_therapeutic_category,
-                crl_summary,
+                crl_text,
                 client
             )
 
