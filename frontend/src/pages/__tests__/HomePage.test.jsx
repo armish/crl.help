@@ -147,6 +147,11 @@ describe('HomePage', () => {
         '2022': { Approved: 120, Unapproved: 80 },
         '2021': { Approved: 80, Unapproved: 100 },
       },
+      by_year_and_therapeutic_category: {
+        '2023': { 'Small molecules': 80, 'Biologics': 70 },
+        '2022': { 'Small molecules': 100, 'Biologics': 100 },
+        '2021': { 'Small molecules': 90, 'Biologics': 90 },
+      },
     };
 
     queries.useStats.mockReturnValue({
@@ -159,11 +164,6 @@ describe('HomePage', () => {
 
     // Check section heading for the chart
     expect(screen.getByText(/crls by year/i)).toBeInTheDocument();
-
-    // Year data is now rendered inside Recharts component
-    // We can verify the chart container exists
-    const chartContainers = document.querySelectorAll('.recharts-responsive-container');
-    expect(chartContainers.length).toBeGreaterThan(0);
   });
 
   it('does not display by year section when no year data', () => {

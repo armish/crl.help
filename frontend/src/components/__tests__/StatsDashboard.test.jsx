@@ -28,6 +28,16 @@ describe('StatsDashboard', () => {
       '2021': { Approved: 120, Unapproved: 60 },
       '2020': { Approved: 70, Unapproved: 30 },
     },
+    by_year_and_therapeutic_category: {
+      '2023': { 'Small molecules': 80, 'Biologics': 70 },
+      '2022': { 'Small molecules': 100, 'Biologics': 100 },
+      '2021': { 'Small molecules': 90, 'Biologics': 90 },
+      '2020': { 'Small molecules': 50, 'Biologics': 50 },
+    },
+    by_therapeutic_category: {
+      'Small molecules': 320,
+      'Biologics': 310,
+    },
   };
 
   it('renders summary stat cards with correct values', () => {
@@ -91,7 +101,7 @@ describe('StatsDashboard', () => {
     render(<StatsDashboard stats={mockStatsComplete} />);
 
     expect(screen.getByText(/CRLs by Year/i)).toBeInTheDocument();
-    expect(screen.getByText('Approval Status Distribution')).toBeInTheDocument();
+    expect(screen.getByText('CRL Breakdown')).toBeInTheDocument();
   });
 
   it('does not render year chart when no year data', () => {
@@ -109,7 +119,7 @@ describe('StatsDashboard', () => {
     expect(screen.queryByText(/CRLs by Year/i)).not.toBeInTheDocument();
   });
 
-  it('does not render status chart when no status data', () => {
+  it('does not render breakdown chart when no breakdown data', () => {
     const stats = {
       total_crls: 100,
       by_status: {},
@@ -117,11 +127,12 @@ describe('StatsDashboard', () => {
         '2023': { Approved: 30, Unapproved: 20 },
         '2022': { Approved: 30, Unapproved: 20 },
       },
+      by_year_and_therapeutic_category: {},
     };
 
     render(<StatsDashboard stats={stats} />);
 
-    expect(screen.queryByText('Approval Status Distribution')).not.toBeInTheDocument();
+    expect(screen.queryByText('CRL Breakdown')).not.toBeInTheDocument();
   });
 
   it('handles missing stats object gracefully', () => {
@@ -188,6 +199,6 @@ describe('StatsDashboard', () => {
 
     // Check that chart section headings are present (charts exist)
     expect(screen.getByText(/CRLs by Year/i)).toBeInTheDocument();
-    expect(screen.getByText('Approval Status Distribution')).toBeInTheDocument();
+    expect(screen.getByText('CRL Breakdown')).toBeInTheDocument();
   });
 });
