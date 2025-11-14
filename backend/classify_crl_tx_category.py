@@ -242,7 +242,6 @@ Which category best matches your previous assessment? Respond with the category 
 async def process_single_crl(
     crl: Dict,
     client: OpenAIClient,
-    conn,
     semaphore: asyncio.Semaphore
 ) -> Dict[str, Any]:
     """Process a single CRL asynchronously."""
@@ -263,12 +262,7 @@ async def process_single_crl(
                 client
             )
 
-            # Update database
-            conn.execute(
-                "UPDATE crls SET therapeutic_category = ? WHERE id = ?",
-                [classification, crl_id]
-            )
-
+            # Return result for batch database update
             return {"status": "success", "crl_id": crl_id, "classification": classification}
 
         except Exception as e:
@@ -293,15 +287,19 @@ async def classify_crls_async(
         pbar = tqdm(total=len(crls), desc="Classifying therapeutic categories", unit="CRL")
 
     tasks = [
-        process_single_crl(crl, client, conn, semaphore)
+        process_single_crl(crl, client, semaphore)
         for crl in crls
     ]
+
+    # Collect successful results for batch database update
+    successful_updates = []
 
     for coro in asyncio.as_completed(tasks):
         result = await coro
 
         if result["status"] == "success":
             stats["success"] += 1
+            successful_updates.append((result["classification"], result["crl_id"]))
             if HAS_TQDM:
                 tqdm.write(f"✓ {result['crl_id']}: {result['classification']}")
         elif result["status"] == "failed":
@@ -317,6 +315,17 @@ async def classify_crls_async(
 
     if HAS_TQDM:
         pbar.close()
+
+    # Perform batch database update
+    if successful_updates:
+        logger.info(f"Updating database with {len(successful_updates)} classifications...")
+        # Use individual execute calls to avoid DuckDB concurrency issues
+        for classification, crl_id in successful_updates:
+            conn.execute(
+                "UPDATE crls SET therapeutic_category = ? WHERE id = ?",
+                [classification, crl_id]
+            )
+        logger.info(f"✓ Database updated successfully")
 
     return stats
 
