@@ -2,7 +2,6 @@
  * Filter Panel Component
  *
  * Provides filtering controls for CRL data:
- * - Search text input
  * - Approval status multi-select dropdown
  * - Year multi-select dropdown
  * - Company name multi-select dropdown
@@ -72,8 +71,7 @@ export default function FilterPanel() {
     filters.letter_type?.length > 0 ||
     filters.therapeutic_category?.length > 0 ||
     filters.deficiency_reason?.length > 0 ||
-    filters.company_name?.length > 0 ||
-    filters.search_text;
+    filters.company_name?.length > 0;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -90,24 +88,6 @@ export default function FilterPanel() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Search Text Input */}
-        <div className="lg:col-span-2">
-          <label
-            htmlFor="search_text"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Search
-          </label>
-          <input
-            id="search_text"
-            type="text"
-            value={filters.search_text}
-            onChange={(e) => setFilter('search_text', e.target.value)}
-            placeholder="Search CRLs..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
         {/* Approval Status Multi-Select */}
         <MultiSelectDropdown
           label="Approval Status"
@@ -182,7 +162,6 @@ export default function FilterPanel() {
           <p className="text-sm text-gray-600">
             Active filters:{' '}
             {[
-              filters.search_text && `Search: "${filters.search_text}"`,
               filters.approval_status?.length > 0 && `Status: ${filters.approval_status.join(', ')}`,
               filters.application_type?.length > 0 && `App Type: ${filters.application_type.join(', ')}`,
               filters.letter_type?.length > 0 && `Letter Type: ${filters.letter_type.length} selected`,
