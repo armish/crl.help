@@ -47,7 +47,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from app.config import settings
 from app.database import init_db
-from app.utils.openai_client import get_openai_client
+from app.utils.openai_client import OpenAIClient
 from app.utils.logging_config import get_logger, setup_logging
 import duckdb
 
@@ -103,28 +103,36 @@ def get_crls_needing_classification(conn, regenerate: bool = False, limit: int =
     logger.info("Fetching CRLs needing classification...")
 
     if regenerate:
-        query = "SELECT id, text FROM crls WHERE text IS NOT NULL AND text != '' ORDER BY letter_date DESC"
+        query = """
+            SELECT c.id, s.summary
+            FROM crls c
+            INNER JOIN crl_summaries s ON c.id = s.crl_id
+            WHERE s.summary IS NOT NULL AND s.summary != ''
+            ORDER BY c.letter_date DESC
+        """
     else:
         query = """
-            SELECT id, text FROM crls
-            WHERE (deficiency_reason IS NULL OR deficiency_reason = '')
-            AND text IS NOT NULL AND text != ''
-            ORDER BY letter_date DESC
+            SELECT c.id, s.summary
+            FROM crls c
+            INNER JOIN crl_summaries s ON c.id = s.crl_id
+            WHERE (c.deficiency_reason IS NULL OR c.deficiency_reason = '')
+            AND s.summary IS NOT NULL AND s.summary != ''
+            ORDER BY c.letter_date DESC
         """
 
     if limit:
         query += f" LIMIT {limit}"
 
     results = conn.execute(query).fetchall()
-    crls = [{"id": row[0], "text": row[1]} for row in results]
+    crls = [{"id": row[0], "summary": row[1]} for row in results]
 
-    logger.info(f"Found {len(crls)} CRLs needing classification")
+    logger.info(f"Found {len(crls)} CRLs needing classification (with summaries)")
     return crls
 
 
-def classify_deficiency_reason(text: str, client) -> str:
-    """Classify the primary deficiency reason using OpenAI."""
-    prompt = f"""Analyze this FDA Complete Response Letter and classify the PRIMARY deficiency reason into ONE of these categories:
+def classify_deficiency_reason(summary: str, client: OpenAIClient) -> str:
+    """Classify the primary deficiency reason using OpenAI with clarification retry."""
+    prompt = f"""Analyze this FDA Complete Response Letter summary and classify the PRIMARY deficiency reason into ONE of these categories:
 
 1. Clinical - Issues with clinical trial design, efficacy, safety data, or patient outcomes
 2. CMC / Quality - Chemistry, Manufacturing, and Controls issues; product quality, stability, or specifications
@@ -132,13 +140,13 @@ def classify_deficiency_reason(text: str, client) -> str:
 4. Combination Product / Device - Device component issues in combination products
 5. Regulatory / Labeling / Other - Regulatory compliance, labeling, or other administrative issues
 
-CRL Text (first 3000 chars):
-{text[:3000]}
+CRL Summary:
+{summary}
 
 Respond with ONLY the category name, nothing else."""
 
     try:
-        response = client.chat.completions.create(
+        classification = client.create_chat_completion(
             model=settings.openai_summary_model,
             messages=[
                 {"role": "system", "content": "You are an FDA regulatory expert who classifies deficiency reasons in Complete Response Letters."},
@@ -146,20 +154,57 @@ Respond with ONLY the category name, nothing else."""
             ],
             max_tokens=50,
             temperature=0.3
-        )
-
-        classification = response.choices[0].message.content.strip()
+        ).strip()
 
         # Validate classification
         if classification in DEFICIENCY_CATEGORIES:
             return classification
-        else:
-            # Try to match partial responses
-            for category in DEFICIENCY_CATEGORIES:
-                if category.lower() in classification.lower():
-                    return category
-            logger.warning(f"Invalid classification returned: {classification}, defaulting to 'Regulatory / Labeling / Other'")
-            return "Regulatory / Labeling / Other"
+
+        # Try to match partial responses
+        for category in DEFICIENCY_CATEGORIES:
+            if category.lower() in classification.lower():
+                return category
+
+        # If no match, make a clarification request
+        logger.info(f"Unclear classification '{classification}', requesting clarification...")
+        clarification_prompt = f"""Your previous response was: "{classification}"
+
+This does not exactly match one of the required categories. Please respond with ONLY ONE of these exact category names:
+
+1. Clinical
+2. CMC / Quality
+3. Facilities / GMP
+4. Combination Product / Device
+5. Regulatory / Labeling / Other
+
+Which category best matches your previous assessment? Respond with the category name only."""
+
+        clarified_classification = client.create_chat_completion(
+            model=settings.openai_summary_model,
+            messages=[
+                {"role": "system", "content": "You are an FDA regulatory expert who classifies deficiency reasons in Complete Response Letters."},
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": classification},
+                {"role": "user", "content": clarification_prompt}
+            ],
+            max_tokens=50,
+            temperature=0.1  # Lower temperature for more precise response
+        ).strip()
+
+        # Validate clarified response
+        if clarified_classification in DEFICIENCY_CATEGORIES:
+            logger.info(f"Clarification successful: '{clarified_classification}'")
+            return clarified_classification
+
+        # Try partial match on clarified response
+        for category in DEFICIENCY_CATEGORIES:
+            if category.lower() in clarified_classification.lower():
+                logger.info(f"Clarification matched: '{category}'")
+                return category
+
+        # If still no match, default to Regulatory / Labeling / Other
+        logger.warning(f"Clarification failed. Original: '{classification}', Clarified: '{clarified_classification}'. Defaulting to 'Regulatory / Labeling / Other'")
+        return "Regulatory / Labeling / Other"
 
     except Exception as e:
         logger.error(f"Classification error: {e}")
@@ -168,16 +213,16 @@ Respond with ONLY the category name, nothing else."""
 
 async def process_single_crl(
     crl: Dict,
-    client,
+    client: OpenAIClient,
     conn,
     semaphore: asyncio.Semaphore
 ) -> Dict[str, Any]:
     """Process a single CRL asynchronously."""
     crl_id = crl["id"]
-    crl_text = crl.get("text", "")
+    crl_summary = crl.get("summary", "")
 
-    if not crl_text or len(crl_text.strip()) < 100:
-        return {"status": "skipped", "crl_id": crl_id, "reason": "insufficient text"}
+    if not crl_summary or len(crl_summary.strip()) < 50:
+        return {"status": "skipped", "crl_id": crl_id, "reason": "insufficient summary"}
 
     async with semaphore:
         try:
@@ -186,7 +231,7 @@ async def process_single_crl(
             classification = await loop.run_in_executor(
                 None,
                 classify_deficiency_reason,
-                crl_text,
+                crl_summary,
                 client
             )
 
@@ -204,7 +249,7 @@ async def process_single_crl(
 
 async def classify_crls_async(
     crls: List[Dict],
-    client,
+    client: OpenAIClient,
     conn,
     batch_size: int = 10
 ) -> Dict[str, int]:
@@ -276,7 +321,7 @@ def main():
             logger.error("L OpenAI API key not configured")
             return 1
 
-        client = get_openai_client()
+        client = OpenAIClient(settings)
         logger.info(f" Using OpenAI model: {settings.openai_summary_model}")
 
         # Get CRLs
@@ -303,17 +348,17 @@ def main():
         logger.info(f"Total CRLs processed:  {stats['total']}")
         logger.info(f" Successful:          {stats['success']}")
         logger.info(f" Failed:              {stats['failed']}")
-        logger.info(f"˜ Skipped:             {stats['skipped']}")
+        logger.info(f"ï¿½ Skipped:             {stats['skipped']}")
 
         if stats["failed"] > 0:
-            logger.warning(f"\n   {stats['failed']} CRLs failed")
+            logger.warning(f"\nï¿½  {stats['failed']} CRLs failed")
             return 1
 
         logger.info("\n All CRLs classified successfully!")
         return 0
 
     except KeyboardInterrupt:
-        logger.warning("\n   Interrupted by user")
+        logger.warning("\nï¿½  Interrupted by user")
         return 130
     except Exception as e:
         logger.error(f"\n Classification failed: {e}", exc_info=True)
