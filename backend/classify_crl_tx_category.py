@@ -4,7 +4,7 @@ Script to classify CRLs by therapeutic category using AI.
 
 This script analyzes the full CRL text and classifies therapeutic category into one of:
 - Small molecules
-- Biologics - proteins
+- Biologics
 - Vaccines
 - Blood products
 - Cellular therapies
@@ -68,7 +68,7 @@ logger = get_logger(__name__)
 
 THERAPEUTIC_CATEGORIES = [
     "Small molecules",
-    "Biologics - proteins",
+    "Biologics",
     "Vaccines",
     "Blood products",
     "Cellular therapies",
@@ -153,7 +153,7 @@ def classify_therapeutic_category(text: str, client: OpenAIClient) -> str:
     prompt = f"""Analyze this FDA Complete Response Letter text and classify the product's therapeutic category into ONE of these categories:
 
 1. Small molecules - Traditional chemical drugs, synthetic compounds
-2. Biologics - proteins - Protein-based biologics, monoclonal antibodies, enzymes
+2. Biologics - Protein-based biologics, monoclonal antibodies, enzymes
 3. Vaccines - Preventive or therapeutic vaccines
 4. Blood products - Blood-derived products, plasma products
 5. Cellular therapies - Cell-based therapies, CAR-T cells
@@ -195,7 +195,7 @@ Respond with ONLY the category name, nothing else."""
 This does not exactly match one of the required categories. Please respond with ONLY ONE of these exact category names:
 
 1. Small molecules
-2. Biologics - proteins
+2. Biologics
 3. Vaccines
 4. Blood products
 5. Cellular therapies
