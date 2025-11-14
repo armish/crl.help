@@ -12,6 +12,7 @@ import { useStats } from '../services/queries';
 import StatsDashboard from '../components/StatsDashboard';
 import FilterPanel from '../components/FilterPanel';
 import CRLTable from '../components/CRLTable';
+import ExportButton from '../components/ExportButton';
 import { useQueryParams } from '../store/filterStore';
 
 export default function HomePage() {
@@ -81,6 +82,9 @@ export default function HomePage() {
       <div>
         <h3 className="text-xl font-bold text-gray-900 mb-4">Complete Response Letters</h3>
         <CRLTable />
+        <div className="mt-6 flex justify-center">
+          <ExportButton />
+        </div>
       </div>
     </div>
   );

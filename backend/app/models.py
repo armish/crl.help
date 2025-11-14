@@ -31,6 +31,7 @@ class CRLListItem(CRLBase):
     """CRL item in list view (subset of fields for performance)."""
     therapeutic_category: Optional[str] = None
     deficiency_reason: Optional[str] = None
+    summary: Optional[str] = None
 
 
 class CRLDetail(CRLBase):

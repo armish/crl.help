@@ -10,7 +10,7 @@ This file contains:
 import os
 import tempfile
 from typing import Generator
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import duckdb
@@ -161,6 +161,194 @@ def sample_crl_list():
         crls.append(crl)
 
     return crls
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_db_singleton():
+    """Reset the DatabaseConnection singleton between tests."""
+    from app.database import DatabaseConnection
+    # Reset the singleton
+    DatabaseConnection._instance = None
+    DatabaseConnection._connection = None
+    yield
+    # Clean up after test
+    if DatabaseConnection._connection is not None:
+        try:
+            DatabaseConnection._connection.close()
+        except:
+            pass
+    DatabaseConnection._instance = None
+    DatabaseConnection._connection = None
+
+
+@pytest.fixture(scope="function")
+def test_db():
+    """Create an in-memory test database with sample data."""
+    conn = duckdb.connect(":memory:")
+
+    # Create tables (matching app/schemas.py structure)
+    conn.execute("""
+        CREATE TABLE crls (
+            id VARCHAR PRIMARY KEY,
+            application_number VARCHAR[],
+            letter_date DATE,
+            letter_year VARCHAR,
+            letter_type VARCHAR,
+            approval_status VARCHAR,
+            company_name VARCHAR,
+            company_address VARCHAR,
+            company_rep VARCHAR,
+            approver_name VARCHAR,
+            approver_center VARCHAR[],
+            approver_title VARCHAR,
+            file_name VARCHAR,
+            text TEXT,
+            therapeutic_category VARCHAR,
+            product_name VARCHAR,
+            indications TEXT,
+            deficiency_reason VARCHAR,
+            raw_json JSON,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE crl_summaries (
+            id INTEGER PRIMARY KEY,
+            crl_id VARCHAR REFERENCES crls(id),
+            summary VARCHAR NOT NULL,
+            model VARCHAR NOT NULL,
+            total_tokens INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE crl_embeddings (
+            id INTEGER PRIMARY KEY,
+            crl_id VARCHAR REFERENCES crls(id),
+            embedding FLOAT[1536],
+            model VARCHAR NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE qa_annotations (
+            id INTEGER PRIMARY KEY,
+            question VARCHAR NOT NULL,
+            answer VARCHAR NOT NULL,
+            relevant_crl_ids VARCHAR[],
+            confidence FLOAT,
+            model VARCHAR NOT NULL,
+            tokens_used INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Insert sample CRL data
+    for i in range(10):
+        conn.execute("""
+            INSERT INTO crls VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """, [
+            f"test_crl_{i}",
+            [f"NDA {215818 + i}"],  # Array, not JSON string
+            f"2024-01-{15 + i:02d}",
+            "2024",
+            "COMPLETE RESPONSE",
+            "Approved" if i % 2 == 0 else "Unapproved",
+            "Pfizer Inc." if i < 3 else f"Test Pharma {i}",
+            f"123 Test St, City {i}",
+            f"Rep {i}",
+            f"Approver {i}",
+            ["Center for Drug Evaluation and Research"],  # Array, not JSON string
+            "Director",
+            f"test_file_{i}.pdf",
+            f"This is test CRL content {i} with deficiencies.",
+            "Small molecules" if i % 3 == 0 else None,  # therapeutic_category
+            f"Test Product {i}" if i < 5 else None,  # product_name
+            "Test indication" if i % 2 == 0 else None,  # indications
+            "Clinical" if i % 2 == 0 else "CMC / Quality",  # deficiency_reason
+            '{}'  # raw_json
+        ])
+
+    # Insert sample summary
+    conn.execute("""
+        INSERT INTO crl_summaries VALUES (1, 'test_crl_0', 'Test summary', 'gpt-4o-mini', 100, CURRENT_TIMESTAMP)
+    """)
+
+    # Insert sample embedding
+    embedding = [0.1] * 1536
+    conn.execute("""
+        INSERT INTO crl_embeddings VALUES (1, 'test_crl_0', ?, 'text-embedding-3-small', CURRENT_TIMESTAMP)
+    """, [embedding])
+
+    yield conn
+    conn.close()
+
+
+@pytest.fixture
+def client(test_db):
+    """FastAPI test client with mocked database."""
+    import sys
+    from app.main import app
+    from fastapi.testclient import TestClient
+
+    # Patch get_db where it's used (in main.py) to return our test database
+    with patch('app.main.get_db', return_value=test_db):
+        # Get module references from sys.modules to avoid creating new references in local scope
+        # This prevents the modules from being visible to DuckDB's replacement scan
+        crls_module = sys.modules.get('app.api.crls')
+        export_module = sys.modules.get('app.api.export')
+        stats_module = sys.modules.get('app.api.stats')
+        qa_module = sys.modules.get('app.api.qa')
+
+        patches = []
+        if crls_module:
+            patches.extend([
+                patch.object(crls_module.crl_repo, 'conn', test_db),
+                patch.object(crls_module.summary_repo, 'conn', test_db),
+            ])
+        if export_module:
+            patches.extend([
+                patch.object(export_module.crl_repo, 'conn', test_db),
+                patch.object(export_module.summary_repo, 'conn', test_db),
+            ])
+        if stats_module:
+            patches.append(patch.object(stats_module.crl_repo, 'conn', test_db))
+        if qa_module:
+            patches.append(patch.object(qa_module.qa_repo, 'conn', test_db))
+
+        # Apply all patches
+        if patches:
+            with patches[0], patches[1], patches[2] if len(patches) > 2 else patch('unittest.mock.MagicMock'), \
+                 patches[3] if len(patches) > 3 else patch('unittest.mock.MagicMock'), \
+                 patches[4] if len(patches) > 4 else patch('unittest.mock.MagicMock'), \
+                 patches[5] if len(patches) > 5 else patch('unittest.mock.MagicMock'):
+                # Mock RAG service to avoid OpenAI API calls
+                with patch('app.api.qa.rag_service') as mock_rag:
+                    mock_rag.answer_question.return_value = {
+                        "question": "What are common deficiencies?",
+                        "answer": "Common deficiencies include CMC issues, clinical trial design problems, and manufacturing concerns.",
+                        "relevant_crls": ["test_crl_0", "test_crl_1"],
+                        "confidence": 0.85,
+                        "model": "gpt-4o-mini"
+                    }
+
+                    yield TestClient(app)
+        else:
+            # Fallback if modules aren't loaded yet
+            with patch('app.api.qa.rag_service') as mock_rag:
+                mock_rag.answer_question.return_value = {
+                    "question": "What are common deficiencies?",
+                    "answer": "Common deficiencies include CMC issues, clinical trial design problems, and manufacturing concerns.",
+                    "relevant_crls": ["test_crl_0", "test_crl_1"],
+                    "confidence": 0.85,
+                    "model": "gpt-4o-mini"
+                }
+
+                yield TestClient(app)
 
 
 @pytest.fixture(autouse=True)
