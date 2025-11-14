@@ -35,7 +35,12 @@ def test_db():
             approver_center VARCHAR[],
             approver_title VARCHAR,
             file_name VARCHAR,
-            text VARCHAR,
+            text TEXT,
+            therapeutic_category VARCHAR,
+            product_name VARCHAR,
+            indications TEXT,
+            deficiency_reason VARCHAR,
+            raw_json JSON,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -78,7 +83,7 @@ def test_db():
     # Insert sample CRL data
     for i in range(10):
         conn.execute("""
-            INSERT INTO crls VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            INSERT INTO crls VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         """, [
             f"test_crl_{i}",
             [f"NDA {215818 + i}"],  # Array, not JSON string
@@ -93,7 +98,12 @@ def test_db():
             ["Center for Drug Evaluation and Research"],  # Array, not JSON string
             "Director",
             f"test_file_{i}.pdf",
-            f"This is test CRL content {i} with deficiencies."
+            f"This is test CRL content {i} with deficiencies.",
+            "Small molecules" if i % 3 == 0 else None,  # therapeutic_category
+            f"Test Product {i}" if i < 5 else None,  # product_name
+            "Test indication" if i % 2 == 0 else None,  # indications
+            "Clinical" if i % 2 == 0 else "CMC / Quality",  # deficiency_reason
+            '{}'  # raw_json
         ])
 
     # Insert sample summary

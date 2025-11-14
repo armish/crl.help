@@ -2,7 +2,6 @@
  * Filter Panel Component
  *
  * Provides filtering controls for CRL data:
- * - Search text input
  * - Approval status multi-select dropdown
  * - Year multi-select dropdown
  * - Company name multi-select dropdown
@@ -33,16 +32,46 @@ export default function FilterPanel() {
   // Approval status options
   const approvalStatusOptions = ['Approved', 'Unapproved'];
 
-  // Letter type options
-  const letterTypeOptions = ['BLA', 'NDA'];
+  // Application type options (BLA/NDA/etc. - derived from application_number)
+  const applicationTypeOptions = ['BLA', 'NDA', 'BL'];
+
+  // Letter type options (from letter_type field)
+  const letterTypeOptions = stats?.by_letter_type
+    ? Object.keys(stats.by_letter_type).sort()
+    : [];
+
+  // Therapeutic category options
+  const therapeuticCategoryOptions = [
+    'Small molecules',
+    'Biologics - proteins',
+    'Vaccines',
+    'Blood products',
+    'Cellular therapies',
+    'Gene therapies',
+    'Tissue products',
+    'Combination products',
+    'Devices/IVDs',
+    'Other'
+  ];
+
+  // Deficiency reason options
+  const deficiencyReasonOptions = [
+    'Clinical',
+    'CMC / Quality',
+    'Facilities / GMP',
+    'Combination Product / Device',
+    'Regulatory / Labeling / Other'
+  ];
 
   // Check if any filters are active (not "Select All")
   const hasActiveFilters =
     filters.approval_status?.length > 0 ||
     filters.letter_year?.length > 0 ||
+    filters.application_type?.length > 0 ||
     filters.letter_type?.length > 0 ||
-    filters.company_name?.length > 0 ||
-    filters.search_text;
+    filters.therapeutic_category?.length > 0 ||
+    filters.deficiency_reason?.length > 0 ||
+    filters.company_name?.length > 0;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -58,25 +87,7 @@ export default function FilterPanel() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Search Text Input */}
-        <div>
-          <label
-            htmlFor="search_text"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Search
-          </label>
-          <input
-            id="search_text"
-            type="text"
-            value={filters.search_text}
-            onChange={(e) => setFilter('search_text', e.target.value)}
-            placeholder="Search CRLs..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Approval Status Multi-Select */}
         <MultiSelectDropdown
           label="Approval Status"
@@ -86,13 +97,42 @@ export default function FilterPanel() {
           maxHeight="150px"
         />
 
-        {/* Letter Type Multi-Select */}
+        {/* Application Type Multi-Select (BLA/NDA/etc.) */}
         <MultiSelectDropdown
           label="Application Type"
+          options={applicationTypeOptions}
+          selectedValues={filters.application_type || []}
+          onChange={(values) => setFilter('application_type', values)}
+          maxHeight="150px"
+        />
+
+        {/* Letter Type Multi-Select */}
+        <MultiSelectDropdown
+          label="Letter Type"
           options={letterTypeOptions}
           selectedValues={filters.letter_type || []}
           onChange={(values) => setFilter('letter_type', values)}
-          maxHeight="150px"
+          maxHeight="200px"
+          enableSearch={true}
+        />
+
+        {/* Therapeutic Category Multi-Select */}
+        <MultiSelectDropdown
+          label="Therapeutic Category"
+          options={therapeuticCategoryOptions}
+          selectedValues={filters.therapeutic_category || []}
+          onChange={(values) => setFilter('therapeutic_category', values)}
+          maxHeight="300px"
+          enableSearch={true}
+        />
+
+        {/* Deficiency Reason Multi-Select */}
+        <MultiSelectDropdown
+          label="Deficiency Reason"
+          options={deficiencyReasonOptions}
+          selectedValues={filters.deficiency_reason || []}
+          onChange={(values) => setFilter('deficiency_reason', values)}
+          maxHeight="200px"
         />
 
         {/* Year Multi-Select */}
@@ -122,9 +162,11 @@ export default function FilterPanel() {
           <p className="text-sm text-gray-600">
             Active filters:{' '}
             {[
-              filters.search_text && `Search: "${filters.search_text}"`,
               filters.approval_status?.length > 0 && `Status: ${filters.approval_status.join(', ')}`,
-              filters.letter_type?.length > 0 && `Type: ${filters.letter_type.join(', ')}`,
+              filters.application_type?.length > 0 && `App Type: ${filters.application_type.join(', ')}`,
+              filters.letter_type?.length > 0 && `Letter Type: ${filters.letter_type.length} selected`,
+              filters.therapeutic_category?.length > 0 && `Therapeutic: ${filters.therapeutic_category.length} selected`,
+              filters.deficiency_reason?.length > 0 && `Reason: ${filters.deficiency_reason.join(', ')}`,
               filters.letter_year?.length > 0 && `Year: ${filters.letter_year.join(', ')}`,
               filters.company_name?.length > 0 && `Company: ${filters.company_name.length} selected`,
             ]

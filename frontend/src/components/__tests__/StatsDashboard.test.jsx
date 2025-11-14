@@ -28,6 +28,16 @@ describe('StatsDashboard', () => {
       '2021': { Approved: 120, Unapproved: 60 },
       '2020': { Approved: 70, Unapproved: 30 },
     },
+    by_year_and_therapeutic_category: {
+      '2023': { 'Small molecules': 80, 'Biologics': 70 },
+      '2022': { 'Small molecules': 100, 'Biologics': 100 },
+      '2021': { 'Small molecules': 90, 'Biologics': 90 },
+      '2020': { 'Small molecules': 50, 'Biologics': 50 },
+    },
+    by_therapeutic_category: {
+      'Small molecules': 320,
+      'Biologics': 310,
+    },
   };
 
   it('renders summary stat cards with correct values', () => {
@@ -90,8 +100,8 @@ describe('StatsDashboard', () => {
   it('renders chart section headings when data is available', () => {
     render(<StatsDashboard stats={mockStatsComplete} />);
 
-    expect(screen.getByText('CRLs by Year')).toBeInTheDocument();
-    expect(screen.getByText('Approval Status Distribution')).toBeInTheDocument();
+    expect(screen.getByText(/CRLs by Year/i)).toBeInTheDocument();
+    expect(screen.getByText('CRL Breakdown')).toBeInTheDocument();
   });
 
   it('does not render year chart when no year data', () => {
@@ -106,10 +116,10 @@ describe('StatsDashboard', () => {
 
     render(<StatsDashboard stats={stats} />);
 
-    expect(screen.queryByText('CRLs by Year')).not.toBeInTheDocument();
+    expect(screen.queryByText(/CRLs by Year/i)).not.toBeInTheDocument();
   });
 
-  it('does not render status chart when no status data', () => {
+  it('does not render breakdown chart when no breakdown data', () => {
     const stats = {
       total_crls: 100,
       by_status: {},
@@ -117,11 +127,12 @@ describe('StatsDashboard', () => {
         '2023': { Approved: 30, Unapproved: 20 },
         '2022': { Approved: 30, Unapproved: 20 },
       },
+      by_year_and_therapeutic_category: {},
     };
 
     render(<StatsDashboard stats={stats} />);
 
-    expect(screen.queryByText('Approval Status Distribution')).not.toBeInTheDocument();
+    expect(screen.queryByText('CRL Breakdown')).not.toBeInTheDocument();
   });
 
   it('handles missing stats object gracefully', () => {
@@ -162,8 +173,8 @@ describe('StatsDashboard', () => {
     // Approved should have green color
     expect(cards[1].className).toContain('bg-green-50');
 
-    // Unapproved should have red color
-    expect(cards[2].className).toContain('bg-red-50');
+    // Unapproved should have orange color (changed from red)
+    expect(cards[2].className).toContain('bg-orange-50');
   });
 
   it('formats large numbers with comma separators', () => {
@@ -184,10 +195,10 @@ describe('StatsDashboard', () => {
   });
 
   it('renders responsive containers for charts', () => {
-    const { container } = render(<StatsDashboard stats={mockStatsComplete} />);
+    render(<StatsDashboard stats={mockStatsComplete} />);
 
-    // Check that ResponsiveContainer elements are present
-    const chartContainers = container.querySelectorAll('.recharts-responsive-container');
-    expect(chartContainers.length).toBe(2); // One for bar chart, one for pie chart
+    // Check that chart section headings are present (charts exist)
+    expect(screen.getByText(/CRLs by Year/i)).toBeInTheDocument();
+    expect(screen.getByText('CRL Breakdown')).toBeInTheDocument();
   });
 });

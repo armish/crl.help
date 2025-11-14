@@ -30,7 +30,10 @@ describe('filterStore', () => {
     expect(result.current.filters).toEqual({
       approval_status: [],
       letter_year: [],
+      application_type: [],
       letter_type: [],
+      therapeutic_category: [],
+      deficiency_reason: [],
       company_name: [],
       search_text: '',
     });
@@ -95,7 +98,10 @@ describe('filterStore', () => {
     expect(result.current.filters).toEqual({
       approval_status: [],
       letter_year: [],
+      application_type: [],
       letter_type: [],
+      therapeutic_category: [],
+      deficiency_reason: [],
       company_name: [],
       search_text: '',
     });

@@ -26,7 +26,10 @@ summary_repo = SummaryRepository()
 async def list_crls(
     approval_status: Optional[str] = Query(None, description="Filter by approval status"),
     letter_year: Optional[str] = Query(None, description="Filter by year"),
-    letter_type: Optional[str] = Query(None, description="Filter by letter type (BLA, NDA, etc.)"),
+    application_type: Optional[str] = Query(None, description="Filter by application type (BLA, NDA, etc.)"),
+    letter_type: Optional[str] = Query(None, description="Filter by letter type"),
+    therapeutic_category: Optional[str] = Query(None, description="Filter by therapeutic category"),
+    deficiency_reason: Optional[str] = Query(None, description="Filter by deficiency reason"),
     company_name: Optional[str] = Query(None, description="Filter by company name (partial match)"),
     search_text: Optional[str] = Query(None, description="Full-text search in letter content"),
     sort_by: str = Query("letter_date", description="Field to sort by"),
@@ -43,6 +46,10 @@ async def list_crls(
 
     - **approval_status**: "Approved" or "Unapproved"
     - **letter_year**: Year as string (e.g., "2024")
+    - **application_type**: Application type (e.g., "BLA", "NDA") - derived from application number
+    - **letter_type**: Letter type - from letter_type field
+    - **therapeutic_category**: Therapeutic category (e.g., "Small molecules", "Biologics - proteins")
+    - **deficiency_reason**: Deficiency reason (e.g., "Clinical", "CMC / Quality")
     - **company_name**: Partial company name (case-insensitive)
     - **search_text**: Full-text search in letter content
 
@@ -62,7 +69,10 @@ async def list_crls(
             offset=offset,
             approval_status=approval_status,
             letter_year=letter_year,
+            application_type=application_type,
             letter_type=letter_type,
+            therapeutic_category=therapeutic_category,
+            deficiency_reason=deficiency_reason,
             company_name=company_name,
             search_text=search_text,
             sort_by=sort_by,
@@ -77,9 +87,12 @@ async def list_crls(
                 letter_date=str(crl["letter_date"]) if crl["letter_date"] else "",
                 letter_year=crl["letter_year"] or "",
                 letter_type=crl["letter_type"],
+                application_type=crl.get("application_type"),
                 approval_status=crl["approval_status"] or "",
                 company_name=crl["company_name"] or "",
-                approver_center=crl["approver_center"] or []
+                approver_center=crl["approver_center"] or [],
+                therapeutic_category=crl.get("therapeutic_category"),
+                deficiency_reason=crl.get("deficiency_reason")
             )
             for crl in crls
         ]
@@ -133,11 +146,16 @@ async def get_crl(crl_id: str = Query(..., description="CRL ID")):
             company_name=crl["company_name"] or "",
             approver_center=crl["approver_center"] or [],
             letter_type=crl.get("letter_type"),
+            application_type=crl.get("application_type"),
             company_address=crl.get("company_address"),
             company_rep=crl.get("company_rep"),
             approver_name=crl.get("approver_name"),
             approver_title=crl.get("approver_title"),
             file_name=crl.get("file_name"),
+            therapeutic_category=crl.get("therapeutic_category"),
+            product_name=crl.get("product_name"),
+            indications=crl.get("indications"),
+            deficiency_reason=crl.get("deficiency_reason"),
             created_at=crl["created_at"],
             updated_at=crl["updated_at"],
             summary=summary_data["summary"] if summary_data else None,
@@ -185,11 +203,16 @@ async def get_crl_with_text(crl_id: str = Query(..., description="CRL ID")):
             company_name=crl["company_name"] or "",
             approver_center=crl["approver_center"] or [],
             letter_type=crl.get("letter_type"),
+            application_type=crl.get("application_type"),
             company_address=crl.get("company_address"),
             company_rep=crl.get("company_rep"),
             approver_name=crl.get("approver_name"),
             approver_title=crl.get("approver_title"),
             file_name=crl.get("file_name"),
+            therapeutic_category=crl.get("therapeutic_category"),
+            product_name=crl.get("product_name"),
+            indications=crl.get("indications"),
+            deficiency_reason=crl.get("deficiency_reason"),
             created_at=crl["created_at"],
             updated_at=crl["updated_at"],
             summary=summary_data["summary"] if summary_data else None,
