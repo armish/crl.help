@@ -205,9 +205,9 @@ async def process_single_crl(
 
     async with semaphore:
         try:
-            # Classify (synchronous call wrapped in executor)
+            # Extract product name (synchronous call wrapped in executor)
             loop = asyncio.get_event_loop()
-            classification = await loop.run_in_executor(
+            product_name = await loop.run_in_executor(
                 None,
                 extract_product_name,
                 crl_text,
@@ -217,7 +217,7 @@ async def process_single_crl(
             # Update database
             conn.execute(
                 "UPDATE crls SET product_name = ? WHERE id = ?",
-                [classification, crl_id]
+                [product_name, crl_id]
             )
 
             return {"status": "success", "crl_id": crl_id, "product_name": product_name}
