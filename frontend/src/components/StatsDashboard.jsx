@@ -164,24 +164,58 @@ export default function StatsDashboard({ stats, unfilteredStats }) {
     return data.sort((a, b) => b.value - a.value);
   }, [selectedBreakdown, stats]);
 
-  // Colors for charts
-  const COLORS = {
-    Approved: '#10b981', // green
-    Unapproved: '#f97316', // orange
+  // Centralized color mapping for all categories
+  // This ensures consistent colors across all chart types
+  const CATEGORY_COLORS = {
+    // Approval Status
+    'Approved': '#10b981', // green
+    'Unapproved': '#f97316', // orange
+
+    // Therapeutic Categories
+    'Small molecules': '#3b82f6', // blue
+    'Biologics': '#8b5cf6', // purple
+    'Vaccines': '#14b8a6', // teal
+    'Blood products': '#ec4899', // pink
+    'Cellular therapies': '#f59e0b', // amber
+    'Gene therapies': '#ef4444', // red
+    'Tissue products': '#06b6d4', // cyan
+    'Combination products': '#6366f1', // indigo
+    'Devices/IVDs': '#84cc16', // lime
+    'Other': '#9ca3af', // gray
+
+    // Application Types
+    'NDA': '#3b82f6', // blue
+    'BLA': '#8b5cf6', // purple
+    'ANDA': '#14b8a6', // teal
+    'Original': '#ec4899', // pink
+    'Resubmission': '#f59e0b', // amber
+    'Efficacy Supplement': '#ef4444', // red
+
+    // Letter Types
+    'Complete Response': '#3b82f6', // blue
+    'Partial Response': '#8b5cf6', // purple
+    'Approval': '#10b981', // green
+
+    // Deficiency Reasons
+    'Clinical': '#3b82f6', // blue
+    'CMC / Quality': '#8b5cf6', // purple
+    'Facilities / GMP': '#14b8a6', // teal
+    'Combination Product / Device': '#ec4899', // pink
+    'Regulatory / Labeling / Other': '#f59e0b', // amber
   };
 
-  // Color palette for breakdown charts
-  const BREAKDOWN_COLORS = [
+  // Fallback color palette for any unmapped categories
+  const FALLBACK_COLORS = [
     '#3b82f6', // blue
-    '#10b981', // green
-    '#f97316', // orange
     '#8b5cf6', // purple
+    '#14b8a6', // teal
     '#ec4899', // pink
     '#f59e0b', // amber
-    '#14b8a6', // teal
     '#ef4444', // red
-    '#6366f1', // indigo
     '#06b6d4', // cyan
+    '#6366f1', // indigo
+    '#84cc16', // lime
+    '#a855f7', // violet
   ];
 
   // Get unique categories from year chart data for stacking
@@ -196,12 +230,14 @@ export default function StatsDashboard({ stats, unfilteredStats }) {
     return Array.from(categories);
   }, [yearChartData]);
 
-  // Get color for a category based on breakdown type
+  // Get color for a category - uses centralized mapping for consistency
   const getCategoryColor = (category, index) => {
-    if (selectedBreakdown === 'status' && COLORS[category]) {
-      return COLORS[category];
+    // First check if we have a predefined color for this category
+    if (CATEGORY_COLORS[category]) {
+      return CATEGORY_COLORS[category];
     }
-    return BREAKDOWN_COLORS[index % BREAKDOWN_COLORS.length];
+    // Fall back to index-based color from fallback palette
+    return FALLBACK_COLORS[index % FALLBACK_COLORS.length];
   };
 
   // Calculate percentages for stat cards
@@ -337,11 +373,7 @@ export default function StatsDashboard({ stats, unfilteredStats }) {
                   {breakdownChartData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={
-                        selectedBreakdown === 'status' && COLORS[entry.name]
-                          ? COLORS[entry.name]
-                          : BREAKDOWN_COLORS[index % BREAKDOWN_COLORS.length]
-                      }
+                      fill={getCategoryColor(entry.name, index)}
                     />
                   ))}
                 </Bar>
