@@ -160,8 +160,8 @@ async def health_check():
         embedding_count = conn.execute("SELECT COUNT(*) FROM main.crl_embeddings").fetchone()[0]
 
         # Get last data update timestamp
-        metadata_repo = MetadataRepository()
-        last_update = metadata_repo.get("last_data_update")
+        result = conn.execute("SELECT value FROM processing_metadata WHERE key = ?", ["last_data_update"]).fetchone()
+        last_update = result[0] if result else None
 
         return HealthResponse(
             status="healthy",
