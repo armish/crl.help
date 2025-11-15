@@ -37,6 +37,7 @@ export default function CRLTable() {
     deficiency_reason: true,
     actions: true,
     // Hidden by default
+    product_name: false,
     letter_year: false,
     application_type: false,
     letter_type: false,
@@ -101,6 +102,11 @@ export default function CRLTable() {
       {
         accessorKey: 'company_name',
         header: 'Company',
+        cell: (info) => info.getValue() || 'N/A',
+      },
+      {
+        accessorKey: 'product_name',
+        header: 'Product Name',
         cell: (info) => info.getValue() || 'N/A',
       },
       {

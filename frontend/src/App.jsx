@@ -3,13 +3,15 @@
  *
  * Sets up:
  * - React Query Provider for data fetching
+ * - React Router for navigation
  * - Main layout
- * - Routing (simple for now, will expand in Phase 9)
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
+import AboutCRL from './pages/AboutCRL';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -25,9 +27,14 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Layout>
-        <HomePage />
-      </Layout>
+      <BrowserRouter>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/about-crl" element={<AboutCRL />} />
+          </Routes>
+        </Layout>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
