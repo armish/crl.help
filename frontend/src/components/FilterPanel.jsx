@@ -43,7 +43,7 @@ export default function FilterPanel() {
   // Therapeutic category options
   const therapeuticCategoryOptions = [
     'Small molecules',
-    'Biologics - proteins',
+    'Biologics',
     'Vaccines',
     'Blood products',
     'Cellular therapies',
