@@ -297,7 +297,7 @@ def test_db():
 
 
 @pytest.fixture
-def client(test_db):
+def client(test_db, test_env_vars):
     """FastAPI test client with mocked database."""
     import sys
     from app.main import app
