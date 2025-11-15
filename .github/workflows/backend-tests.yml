@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'claude/**'
+      - 'docker-deploy'
     paths:
       - 'backend/**'
       - '.github/workflows/backend-tests.yml'

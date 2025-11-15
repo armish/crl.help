@@ -6,6 +6,7 @@ on:
       - main
       - 'claude/**'
       - 'feature/**'
+      - 'docker-deploy'
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-tests.yml'
