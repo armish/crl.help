@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    environment:
+      # Database configuration
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DATABASE_PATH=/app/backend/data/crl_explorer.duckdb
+
+      # OpenAI API configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+      # Application configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+
+      # AI model configuration (optional overrides)
+      - OPENAI_SUMMARY_MODEL=${OPENAI_SUMMARY_MODEL:-gpt-5-nano}
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-large}
+      - OPENAI_QA_MODEL=${OPENAI_QA_MODEL:-gpt-5-nano}
+    volumes:
+      # Mount database directory for persistence
+      - ./backend/data:/app/backend/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
