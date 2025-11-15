@@ -49,7 +49,7 @@ async def list_crls(
     - **letter_year**: Year as string (e.g., "2024")
     - **application_type**: Application type (e.g., "BLA", "NDA") - derived from application number
     - **letter_type**: Letter type - from letter_type field
-    - **therapeutic_category**: Therapeutic category (e.g., "Small molecules", "Biologics - proteins")
+    - **therapeutic_category**: Therapeutic category (e.g., "Small molecules", "Biologics")
     - **deficiency_reason**: Deficiency reason (e.g., "Clinical", "CMC / Quality")
     - **company_name**: Partial company name (case-insensitive)
     - **search_text**: Full-text search in letter content

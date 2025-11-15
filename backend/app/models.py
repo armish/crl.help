@@ -98,7 +98,7 @@ class StatsOverview(BaseModel):
     by_year_and_status: dict  # {"2024": {"Approved": 50, "Unapproved": 17}, ...}
     by_application_type: dict  # {"NDA": 302, "BLA": 83, ...}
     by_letter_type: dict  # {"BLA": 120, "NDA": 95, ...}
-    by_therapeutic_category: dict  # {"Small molecules": 150, "Biologics - proteins": 80, ...}
+    by_therapeutic_category: dict  # {"Small molecules": 150, "Biologics": 80, ...}
     by_deficiency_reason: dict  # {"Clinical": 200, "CMC / Quality": 100, ...}
     by_year_and_application_type: dict  # {"2024": {"NDA": 45, "BLA": 22}, ...}
     by_year_and_letter_type: dict  # {"2024": {"BLA": 30, "NDA": 20}, ...}
