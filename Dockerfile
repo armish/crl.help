@@ -61,7 +61,8 @@ RUN mkdir -p /app/backend/data && chown -R appuser:appuser /app
 # Environment variables
 ENV DATABASE_URL="" \
     DATABASE_PATH=/app/backend/data/crl_explorer.duckdb \
-    OPENAI_API_KEY="" \
+    OPENAI_API_KEY="sk-dummy-key-for-dry-run-mode" \
+    AI_DRY_RUN=true \
     CORS_ORIGINS="*" \
     LOG_LEVEL=INFO \
     PORT=8000

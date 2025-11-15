@@ -5,7 +5,7 @@ Uses Pydantic Settings for environment variable validation and type safety.
 
 from functools import lru_cache
 from typing import List
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,8 +20,7 @@ class Settings(BaseSettings):
     # OpenAI API Configuration
     openai_api_key: str = Field(
         default="sk-dummy-key-for-dry-run-mode",
-        description="OpenAI API key for summarization and embeddings. Not required in dry-run mode.",
-        min_length=20
+        description="OpenAI API key for summarization and embeddings. Not required in dry-run mode."
     )
 
     # Database Configuration
@@ -141,20 +140,25 @@ class Settings(BaseSettings):
             )
         return v_upper
 
-    @field_validator("openai_api_key")
-    @classmethod
-    def validate_openai_api_key(cls, v: str, info) -> str:
-        """Validate OpenAI API key format."""
+    @model_validator(mode='after')
+    def validate_openai_api_key(self) -> 'Settings':
+        """Validate OpenAI API key format after all fields are set."""
         # Skip validation if in dry-run mode
-        if info.data.get("ai_dry_run", False):
-            return v
+        if self.ai_dry_run:
+            return self
 
-        if not v.startswith("sk-"):
+        if len(self.openai_api_key) < 20:
+            raise ValueError(
+                "openai_api_key must be at least 20 characters. "
+                "Please provide a valid OpenAI API key or enable AI_DRY_RUN mode."
+            )
+
+        if not self.openai_api_key.startswith("sk-"):
             raise ValueError(
                 "openai_api_key must start with 'sk-'. "
                 "Please provide a valid OpenAI API key or enable AI_DRY_RUN mode."
             )
-        return v
+        return self
 
     def get_cors_origins_list(self) -> List[str]:
         """Parse comma-separated CORS origins into a list."""
