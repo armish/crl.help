@@ -274,7 +274,7 @@ class TestCRLRepository:
                 "raw_json": {},
             })
 
-        crls, total = self.repo.get_all(approval_status="Approved")
+        crls, total = self.repo.get_all(approval_status=["Approved"])
 
         # sample_crl_list has alternating status (even indices are Approved)
         assert total == 3  # indices 0, 2, 4
@@ -295,7 +295,7 @@ class TestCRLRepository:
                 "raw_json": {},
             })
 
-        crls, total = self.repo.get_all(letter_year="2024")
+        crls, total = self.repo.get_all(letter_year=["2024"])
 
         assert total == 3
         for crl in crls:
