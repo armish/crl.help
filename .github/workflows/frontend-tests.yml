@@ -2,17 +2,10 @@ name: Frontend Tests
 
 on:
   push:
-    branches:
-      - main
-      - 'claude/**'
-      - 'feature/**'
-      - 'docker-deploy'
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-tests.yml'
   pull_request:
-    branches:
-      - main
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-tests.yml'
