@@ -10,7 +10,7 @@ from app.services.rag import RAGService
 
 
 @pytest.fixture
-def dry_run_settings():
+def dry_run_settings(test_env_vars):
     """Settings with dry-run mode enabled."""
     return Settings(
         openai_api_key="sk-dummy-key-for-testing-purposes",
