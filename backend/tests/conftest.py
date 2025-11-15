@@ -247,6 +247,14 @@ def test_db():
         )
     """)
 
+    conn.execute("""
+        CREATE TABLE processing_metadata (
+            key VARCHAR PRIMARY KEY,
+            value VARCHAR,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     # Insert sample CRL data
     for i in range(10):
         conn.execute("""
@@ -289,7 +297,7 @@ def test_db():
 
 
 @pytest.fixture
-def client(test_db):
+def client(test_db, test_env_vars):
     """FastAPI test client with mocked database."""
     import sys
     from app.main import app

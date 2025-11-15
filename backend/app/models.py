@@ -177,3 +177,4 @@ class HealthResponse(BaseModel):
     total_crls: int = Field(description="Number of CRLs in database")
     total_summaries: int = Field(description="Number of summaries generated")
     total_embeddings: int = Field(description="Number of embeddings generated")
+    last_data_update: Optional[str] = Field(None, description="Date when data was last updated (YYYY-MM-DD)")

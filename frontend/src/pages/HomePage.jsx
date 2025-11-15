@@ -56,6 +56,8 @@ export default function HomePage() {
         <FilterPanel />
       </div>
 
+      <hr className="border-gray-300" />
+
       {/* Statistics Dashboard - updates based on filters */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -77,6 +79,8 @@ export default function HomePage() {
         </div>
         {showOverview && <StatsDashboard stats={stats} unfilteredStats={unfilteredStats} />}
       </div>
+
+      <hr className="border-gray-300" />
 
       {/* CRL Table Section */}
       <div>

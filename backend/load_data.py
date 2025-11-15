@@ -27,7 +27,7 @@ if "--help" in sys.argv or "-h" in sys.argv:
 sys.path.insert(0, str(Path(__file__).parent))
 
 from app.config import settings
-from app.database import init_db, CRLRepository
+from app.database import init_db, CRLRepository, MetadataRepository
 from app.services.data_ingestion import fetch_crl_data
 from app.services.data_processor import process_crl_data
 from app.utils.logging_config import get_logger, setup_logging
@@ -96,6 +96,13 @@ async def main():
 
         logger.info("\n✓ All data loaded successfully!")
         logger.info(f"\nDatabase location: {settings.database_path}")
+
+        # Update last data update timestamp
+        metadata_repo = MetadataRepository()
+        from datetime import datetime
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        metadata_repo.set("last_data_update", current_date)
+        logger.info(f"\nLast data update timestamp: {current_date}")
 
         return 0
 

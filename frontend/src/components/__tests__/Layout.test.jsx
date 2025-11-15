@@ -8,17 +8,30 @@
  * - Footer renders with credits and links
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import Layout from '../Layout';
+
+// Mock fetch for the health check
+global.fetch = vi.fn(() =>
+  Promise.resolve({
+    json: () => Promise.resolve({ last_data_update: null }),
+  })
+);
+
+// Helper to render Layout with Router
+const renderLayout = (children) => {
+  return render(
+    <BrowserRouter>
+      <Layout>{children}</Layout>
+    </BrowserRouter>
+  );
+};
 
 describe('Layout', () => {
   it('renders header with app title and tagline', () => {
-    render(
-      <Layout>
-        <div>Test Content</div>
-      </Layout>
-    );
+    renderLayout(<div>Test Content</div>);
 
     expect(screen.getByText('FDA CRL Explorer')).toBeInTheDocument();
     expect(
@@ -27,39 +40,27 @@ describe('Layout', () => {
   });
 
   it('renders navigation links', () => {
-    render(
-      <Layout>
-        <div>Test Content</div>
-      </Layout>
-    );
+    renderLayout(<div>Test Content</div>);
 
-    const browseLink = screen.getByRole('link', { name: /browse/i });
-    const qaLink = screen.getByRole('link', { name: /q&a/i });
-    const aboutLink = screen.getByRole('link', { name: /about/i });
+    // Get all links and check that the navigation ones exist
+    const allLinks = screen.getAllByRole('link');
+    const linkTexts = allLinks.map(link => link.textContent);
 
-    expect(browseLink).toBeInTheDocument();
-    expect(qaLink).toBeInTheDocument();
-    expect(aboutLink).toBeInTheDocument();
+    expect(linkTexts).toContain('Explore');
+    expect(linkTexts).toContain('What is a CRL?');
+    expect(linkTexts).toContain('Feedback');
   });
 
   it('renders children content in main area', () => {
     const testContent = 'This is test content';
 
-    render(
-      <Layout>
-        <div>{testContent}</div>
-      </Layout>
-    );
+    renderLayout(<div>{testContent}</div>);
 
     expect(screen.getByText(testContent)).toBeInTheDocument();
   });
 
   it('renders footer with openFDA link', () => {
-    render(
-      <Layout>
-        <div>Test Content</div>
-      </Layout>
-    );
+    renderLayout(<div>Test Content</div>);
 
     const openFDALink = screen.getByRole('link', { name: /openfda transparency api/i });
 
@@ -73,21 +74,13 @@ describe('Layout', () => {
   });
 
   it('renders footer with tech stack credits', () => {
-    render(
-      <Layout>
-        <div>Test Content</div>
-      </Layout>
-    );
+    renderLayout(<div>Test Content</div>);
 
     expect(screen.getByText(/built with react, fastapi, and openai/i)).toBeInTheDocument();
   });
 
   it('has correct semantic HTML structure', () => {
-    const { container } = render(
-      <Layout>
-        <div>Test Content</div>
-      </Layout>
-    );
+    const { container } = renderLayout(<div>Test Content</div>);
 
     const header = container.querySelector('header');
     const main = container.querySelector('main');
@@ -99,11 +92,7 @@ describe('Layout', () => {
   });
 
   it('applies correct styling classes', () => {
-    const { container } = render(
-      <Layout>
-        <div>Test Content</div>
-      </Layout>
-    );
+    const { container } = renderLayout(<div>Test Content</div>);
 
     const rootDiv = container.firstChild;
     expect(rootDiv).toHaveClass('min-h-screen', 'flex', 'flex-col', 'bg-gray-50');

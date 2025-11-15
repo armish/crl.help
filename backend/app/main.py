@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 from app.config import get_settings
-from app.database import init_db, get_db
+from app.database import init_db, get_db, MetadataRepository
 from app.models import HealthResponse
 from app.utils.logging_config import get_logger
 
@@ -159,12 +159,17 @@ async def health_check():
         summary_count = conn.execute("SELECT COUNT(*) FROM main.crl_summaries").fetchone()[0]
         embedding_count = conn.execute("SELECT COUNT(*) FROM main.crl_embeddings").fetchone()[0]
 
+        # Get last data update timestamp
+        result = conn.execute("SELECT value FROM processing_metadata WHERE key = ?", ["last_data_update"]).fetchone()
+        last_update = result[0] if result else None
+
         return HealthResponse(
             status="healthy",
             database="connected",
             total_crls=crl_count,
             total_summaries=summary_count,
-            total_embeddings=embedding_count
+            total_embeddings=embedding_count,
+            last_data_update=last_update
         )
     except Exception as e:
         logger.error(f"Health check failed: {e}")
@@ -173,7 +178,8 @@ async def health_check():
             database="error",
             total_crls=0,
             total_summaries=0,
-            total_embeddings=0
+            total_embeddings=0,
+            last_data_update=None
         )
 
 
