@@ -3,7 +3,7 @@ CRL API endpoints for listing, filtering, and viewing Complete Response Letters.
 """
 
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
+from typing import Optional, List
 
 from app.database import CRLRepository, SummaryRepository
 from app.models import (
@@ -24,12 +24,12 @@ summary_repo = SummaryRepository()
 
 @router.get("", response_model=CRLListResponse)
 async def list_crls(
-    approval_status: Optional[str] = Query(None, description="Filter by approval status"),
-    letter_year: Optional[str] = Query(None, description="Filter by year"),
-    application_type: Optional[str] = Query(None, description="Filter by application type (BLA, NDA, etc.)"),
-    letter_type: Optional[str] = Query(None, description="Filter by letter type"),
-    therapeutic_category: Optional[str] = Query(None, description="Filter by therapeutic category"),
-    deficiency_reason: Optional[str] = Query(None, description="Filter by deficiency reason"),
+    approval_status: Optional[List[str]] = Query(None, description="Filter by approval status (supports multiple values)"),
+    letter_year: Optional[List[str]] = Query(None, description="Filter by year (supports multiple values)"),
+    application_type: Optional[List[str]] = Query(None, description="Filter by application type (supports multiple values)"),
+    letter_type: Optional[List[str]] = Query(None, description="Filter by letter type (supports multiple values)"),
+    therapeutic_category: Optional[List[str]] = Query(None, description="Filter by therapeutic category (supports multiple values)"),
+    deficiency_reason: Optional[List[str]] = Query(None, description="Filter by deficiency reason (supports multiple values)"),
     company_name: Optional[str] = Query(None, description="Filter by company name (partial match)"),
     search_text: Optional[str] = Query(None, description="Full-text search in letter content"),
     include_summary: bool = Query(False, description="Include AI-generated summaries"),

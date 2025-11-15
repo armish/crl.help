@@ -212,12 +212,12 @@ class CRLRepository:
         self,
         limit: int = 100,
         offset: int = 0,
-        approval_status: Optional[str] = None,
-        letter_year: Optional[str] = None,
-        application_type: Optional[str] = None,
-        letter_type: Optional[str] = None,
-        therapeutic_category: Optional[str] = None,
-        deficiency_reason: Optional[str] = None,
+        approval_status: Optional[List[str]] = None,
+        letter_year: Optional[List[str]] = None,
+        application_type: Optional[List[str]] = None,
+        letter_type: Optional[List[str]] = None,
+        therapeutic_category: Optional[List[str]] = None,
+        deficiency_reason: Optional[List[str]] = None,
         company_name: Optional[str] = None,
         search_text: Optional[str] = None,
         sort_by: str = "letter_date",
@@ -229,12 +229,12 @@ class CRLRepository:
         Args:
             limit: Maximum number of records to return
             offset: Number of records to skip
-            approval_status: Filter by approval status
-            letter_year: Filter by year
-            application_type: Filter by application type (BLA, NDA, etc.)
-            letter_type: Filter by letter type
-            therapeutic_category: Filter by therapeutic category
-            deficiency_reason: Filter by deficiency reason
+            approval_status: Filter by approval status (supports multiple values)
+            letter_year: Filter by year (supports multiple values)
+            application_type: Filter by application type (supports multiple values)
+            letter_type: Filter by letter type (supports multiple values)
+            therapeutic_category: Filter by therapeutic category (supports multiple values)
+            deficiency_reason: Filter by deficiency reason (supports multiple values)
             company_name: Filter by company name (partial match)
             search_text: Full-text search in text field
             sort_by: Column to sort by
@@ -247,29 +247,35 @@ class CRLRepository:
         where_clauses = []
         params = []
 
-        if approval_status:
-            where_clauses.append("approval_status = ?")
-            params.append(approval_status)
+        if approval_status and len(approval_status) > 0:
+            placeholders = ','.join(['?' for _ in approval_status])
+            where_clauses.append(f"approval_status IN ({placeholders})")
+            params.extend(approval_status)
 
-        if letter_year:
-            where_clauses.append("letter_year = ?")
-            params.append(letter_year)
+        if letter_year and len(letter_year) > 0:
+            placeholders = ','.join(['?' for _ in letter_year])
+            where_clauses.append(f"letter_year IN ({placeholders})")
+            params.extend(letter_year)
 
-        if application_type:
-            where_clauses.append("regexp_extract(application_number[1], '^([A-Z]+)', 1) = ?")
-            params.append(application_type)
+        if application_type and len(application_type) > 0:
+            placeholders = ','.join(['?' for _ in application_type])
+            where_clauses.append(f"regexp_extract(application_number[1], '^([A-Z]+)', 1) IN ({placeholders})")
+            params.extend(application_type)
 
-        if letter_type:
-            where_clauses.append("letter_type = ?")
-            params.append(letter_type)
+        if letter_type and len(letter_type) > 0:
+            placeholders = ','.join(['?' for _ in letter_type])
+            where_clauses.append(f"letter_type IN ({placeholders})")
+            params.extend(letter_type)
 
-        if therapeutic_category:
-            where_clauses.append("therapeutic_category = ?")
-            params.append(therapeutic_category)
+        if therapeutic_category and len(therapeutic_category) > 0:
+            placeholders = ','.join(['?' for _ in therapeutic_category])
+            where_clauses.append(f"therapeutic_category IN ({placeholders})")
+            params.extend(therapeutic_category)
 
-        if deficiency_reason:
-            where_clauses.append("deficiency_reason = ?")
-            params.append(deficiency_reason)
+        if deficiency_reason and len(deficiency_reason) > 0:
+            placeholders = ','.join(['?' for _ in deficiency_reason])
+            where_clauses.append(f"deficiency_reason IN ({placeholders})")
+            params.extend(deficiency_reason)
 
         if company_name:
             where_clauses.append("company_name ILIKE ?")
