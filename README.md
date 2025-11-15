@@ -2,18 +2,40 @@
 
 [![Backend Tests](https://github.com/armish/crl.help/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/armish/crl.help/actions/workflows/backend-tests.yml)
 [![Frontend Tests](https://github.com/armish/crl.help/actions/workflows/frontend-tests.yml/badge.svg)](https://github.com/armish/crl.help/actions/workflows/frontend-tests.yml)
+[![Docker Build](https://github.com/armish/crl.help/actions/workflows/docker-build.yml/badge.svg)](https://github.com/armish/crl.help/actions/workflows/docker-build.yml)
 
 FDA Complete Response Letter (CRL) Explorer - A web application for exploring and analyzing FDA Complete Response Letters with AI-powered insights.
 
 ## Quick Start
 
-### Prerequisites
+### Option 1: Docker (Recommended)
+
+The easiest way to run the application is using Docker:
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/armish/crl.help:latest
+
+# Run the container
+docker run -d \
+  -p 80:80 \
+  -v ./data:/app/backend/data \
+  ghcr.io/armish/crl.help:latest
+```
+
+The application will be available at `http://localhost`
+
+For detailed Docker instructions including Docker Compose, environment variables, and deployment options, see [Docker.md](docker/Docker.md).
+
+### Option 2: Local Development
+
+#### Prerequisites
 
 - Python 3.9+ (for backend)
 - Node.js 18+ (for frontend)
 - DuckDB (installed automatically)
 
-### Running the Application
+#### Running the Application
 
 #### 1. Start the Backend
 
@@ -127,6 +149,7 @@ The application can be configured with these environment variables:
 
 ### Next Steps
 
-See individual README files for more details:
+See individual documentation files for more details:
+- [Docker Documentation](docker/Docker.md) - Docker deployment and configuration
 - [Backend README](backend/README.md) - API documentation and development
 - [Frontend README](frontend/README.md) - UI components and testing
