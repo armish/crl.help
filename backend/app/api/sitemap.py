@@ -35,17 +35,15 @@ async def get_sitemap():
     """
     try:
         # Fetch all CRLs (we need all of them for the sitemap)
-        # Get total count first
-        all_crls_response = crl_repo.get_all(
+        # get_all returns (items, total) tuple
+        crls, total = crl_repo.get_all(
             limit=10000,  # High limit to get all CRLs
             offset=0,
             sort_by="letter_date",
             sort_order="DESC"
         )
 
-        crls = all_crls_response["items"]
-
-        logger.info(f"Generating sitemap with {len(crls)} CRLs")
+        logger.info(f"Generating sitemap with {len(crls)} CRLs (total: {total})")
 
         # Generate sitemap XML
         sitemap_xml = generate_sitemap_xml(crls, base_url="https://crl.help")
