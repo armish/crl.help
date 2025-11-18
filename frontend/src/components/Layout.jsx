@@ -13,12 +13,32 @@ import { Link, useLocation } from 'react-router-dom';
 export default function Layout({ children }) {
   const location = useLocation();
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const navItems = [
     { path: '/', label: 'Explore' },
     { path: '/about-crl', label: 'What is a CRL?' },
     { path: 'https://github.com/armish/crl.help/issues', label: 'Feedback', external: true },
   ];
+
+  // Handle scroll to shrink header
+  useEffect(() => {
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          // Use a larger threshold (100px) to avoid jumpiness
+          setIsScrolled(window.scrollY > 100);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Fetch last data update timestamp
   useEffect(() => {
@@ -46,15 +66,21 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      {/* Header - Sticky and shrinks on scroll */}
+      <header className={`bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40 transition-all duration-500 ease-in-out ${
+        isScrolled ? 'py-2' : 'py-4'
+      }`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <Link to="/" className="hover:opacity-80 transition-opacity">
-              <h1 className="text-[2rem] font-bold text-gray-900">
+              <h1 className={`font-bold text-gray-900 transition-all duration-500 ease-in-out ${
+                isScrolled ? 'text-xl' : 'text-[2rem]'
+              }`}>
                 FDA CRL Explorer
               </h1>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className={`text-sm text-gray-600 mt-1 transition-all duration-500 ease-in-out overflow-hidden ${
+                isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'
+              }`}>
                 Complete Response Letter Database with AI-Powered Insights
               </p>
             </Link>
@@ -68,7 +94,9 @@ export default function Layout({ children }) {
                     href={item.path}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                    className={`font-medium text-gray-600 hover:text-gray-900 transition-all duration-500 ease-in-out ${
+                      isScrolled ? 'text-sm' : 'text-base'
+                    }`}
                   >
                     {item.label}
                   </a>
@@ -76,7 +104,9 @@ export default function Layout({ children }) {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`font-medium transition-colors ${
+                    className={`font-medium transition-all duration-500 ease-in-out ${
+                      isScrolled ? 'text-sm' : 'text-base'
+                    } ${
                       location.pathname === item.path
                         ? 'text-blue-600'
                         : 'text-gray-600 hover:text-gray-900'
@@ -117,6 +147,12 @@ export default function Layout({ children }) {
                   Last updated: {lastUpdate}
                 </p>
               )}
+              <Link
+                to="/crl-index"
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                CRL Index
+              </Link>
             </div>
             <div className="flex items-center gap-4">
               <a
