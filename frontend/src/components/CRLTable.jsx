@@ -19,9 +19,11 @@ import {
   getSortedRowModel,
   flexRender,
 } from '@tanstack/react-table';
+import { Link } from 'react-router-dom';
 import { useCRLs } from '../services/queries';
 import useFilterStore, { useQueryParams } from '../store/filterStore';
 import CRLDetailModal from './CRLDetailModal';
+import { getCRLDetailUrl } from '../utils/urlHelpers';
 
 export default function CRLTable() {
   // Modal state
@@ -102,7 +104,19 @@ export default function CRLTable() {
       {
         accessorKey: 'company_name',
         header: 'Company',
-        cell: (info) => info.getValue() || 'N/A',
+        cell: (info) => {
+          const companyName = info.getValue() || 'N/A';
+          const crlUrl = getCRLDetailUrl(info.row.original);
+          return (
+            <Link
+              to={crlUrl}
+              onClick={(e) => e.stopPropagation()}
+              className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+            >
+              {companyName}
+            </Link>
+          );
+        },
       },
       {
         accessorKey: 'product_name',
@@ -177,7 +191,7 @@ export default function CRLTable() {
               }}
               className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
             >
-              View Details
+              View
             </button>
           );
         },

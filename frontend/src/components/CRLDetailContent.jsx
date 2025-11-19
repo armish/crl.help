@@ -1,0 +1,239 @@
+/**
+ * CRL Detail Content Component
+ *
+ * Reusable component that displays CRL details.
+ * Used by both the modal and the dedicated CRL page.
+ *
+ * Features:
+ * - CRL metadata display
+ * - AI-generated summary (prominent)
+ * - Full letter text in separate tab
+ * - Download PDF button (if available)
+ * - Responsive design
+ */
+
+import { useState } from 'react';
+import { useCRL, useCRLText } from '../services/queries';
+
+export default function CRLDetailContent({ crlId }) {
+  const [activeTab, setActiveTab] = useState('summary');
+
+  // Fetch CRL details with summary
+  const { data: crl, isLoading, error } = useCRL(crlId);
+
+  // Fetch full text only when text tab is active
+  const { data: crlWithText } = useCRLText(activeTab === 'text' ? crlId : null);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+        <span className="ml-3 text-gray-600">Loading CRL details...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <h3 className="text-red-800 font-semibold">Error loading CRL</h3>
+        <p className="text-red-600 text-sm mt-1">{error.message}</p>
+      </div>
+    );
+  }
+
+  if (!crl) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Under Review Warning - Show when no application number */}
+      {(!crl.application_number ||
+        (Array.isArray(crl.application_number) && crl.application_number.length === 0) ||
+        crl.application_number === 'N/A') && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <svg className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-amber-900 mb-1">CRL Under Review</h3>
+              <p className="text-sm text-amber-800">
+                This Complete Response Letter is currently under review. Full details have not been released yet by the FDA.
+                The information shown below may be incomplete.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Metadata Section */}
+      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase">Application Number</label>
+            <p className="text-sm text-gray-900 mt-1">
+              {Array.isArray(crl.application_number)
+                ? crl.application_number.join(', ')
+                : crl.application_number || 'N/A'}
+            </p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase">Letter Date</label>
+            <p className="text-sm text-gray-900 mt-1">
+              {crl.letter_date ? new Date(crl.letter_date).toLocaleDateString() : 'N/A'}
+            </p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase">Application Type</label>
+            <p className="text-sm text-gray-900 mt-1">{crl.letter_type || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase">Year</label>
+            <p className="text-sm text-gray-900 mt-1">{crl.letter_year || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase">Status</label>
+            <p className="mt-1">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                crl.approval_status === 'Approved'
+                  ? 'text-green-700 bg-green-50'
+                  : 'text-red-700 bg-red-50'
+              }`}>
+                {crl.approval_status || 'Unknown'}
+              </span>
+            </p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase">Company</label>
+            <p className="text-sm text-gray-900 mt-1">{crl.company_name || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase">Therapeutic Category</label>
+            <p className="text-sm text-gray-900 mt-1">{crl.therapeutic_category || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase">Deficiency Reason</label>
+            <p className="text-sm text-gray-900 mt-1">{crl.deficiency_reason || 'N/A'}</p>
+          </div>
+          {crl.product_name && (
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-gray-500 uppercase">Product Name</label>
+              <p className="text-sm text-gray-900 mt-1">{crl.product_name}</p>
+            </div>
+          )}
+          {crl.indications && (
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-gray-500 uppercase">Indications</label>
+              <p className="text-sm text-gray-900 mt-1">{crl.indications}</p>
+            </div>
+          )}
+          <div className="md:col-span-2">
+            <label className="text-xs font-medium text-gray-500 uppercase">FDA Center</label>
+            <p className="text-sm text-gray-900 mt-1">
+              {Array.isArray(crl.approver_center)
+                ? crl.approver_center.join(', ')
+                : crl.approver_center || 'N/A'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="flex space-x-4">
+          <button
+            onClick={() => setActiveTab('summary')}
+            className={`px-4 py-2 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'summary'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Executive Summary
+          </button>
+          <button
+            onClick={() => setActiveTab('text')}
+            className={`px-4 py-2 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'text'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Full Letter Text
+          </button>
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      <div className="min-h-[200px]">
+        {activeTab === 'summary' && (
+          <div>
+            {crl.summary ? (
+              <div className="prose prose-sm max-w-none">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-blue-900 mb-2">Executive Summary</h3>
+                      <div className="text-base text-gray-700 whitespace-pre-wrap">
+                        {crl.summary}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No summary available</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  This CRL has not been summarized yet.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'text' && (
+          <div>
+            {crlWithText?.text ? (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono">
+                  {crlWithText.text}
+                </pre>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-12">
+                <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                <span className="ml-3 text-sm text-gray-600">Loading full text...</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Footer Actions */}
+      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+        <div className="text-xs text-gray-500">
+          ID: {crl.id}
+        </div>
+        {crl.file_name && (
+          <a
+            href={`https://download.open.fda.gov/crl/${crl.file_name}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+          >
+            Download PDF
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
