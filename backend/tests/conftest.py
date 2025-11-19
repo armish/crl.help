@@ -371,3 +371,23 @@ def reset_settings_cache():
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def disable_rate_limiting():
+    """
+    Disable rate limiting for all tests.
+
+    slowapi expects a Starlette Request object to extract IP addresses,
+    but TestClient doesn't provide the full request context. This fixture
+    disables rate limiting during tests.
+    """
+    # Mock the limit decorator to be a no-op
+    def mock_limit(limit_value):
+        def decorator(func):
+            return func
+        return decorator
+
+    # Patch the limiter instance in search module
+    with patch('app.api.search.limiter.limit', side_effect=mock_limit):
+        yield
