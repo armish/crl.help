@@ -28,7 +28,7 @@ export default function CRLIndexPage() {
         // Fetch all CRLs in batches
         while (hasMore) {
           const response = await fetch(
-            `http://localhost:8000/api/crls?page=${Math.floor(offset / pageSize) + 1}&pageSize=${pageSize}&sortBy=letter_date&sortOrder=DESC`
+            `/api/crls?page=${Math.floor(offset / pageSize) + 1}&pageSize=${pageSize}&sortBy=letter_date&sortOrder=DESC`
           );
 
           if (!response.ok) {
@@ -109,7 +109,7 @@ export default function CRLIndexPage() {
             <h2 className="text-red-800 font-semibold text-lg">Error loading CRLs</h2>
             <p className="text-red-600 mt-2">{error}</p>
             <p className="text-sm text-red-500 mt-2">
-              Make sure the backend server is running on http://localhost:8000
+              Unable to load CRL data. Please try again later.
             </p>
           </div>
         )}

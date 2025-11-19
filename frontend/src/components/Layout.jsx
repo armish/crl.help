@@ -44,7 +44,7 @@ export default function Layout({ children }) {
   useEffect(() => {
     const fetchLastUpdate = async () => {
       try {
-        const response = await fetch('http://localhost:8000/health');
+        const response = await fetch('/health');
         const data = await response.json();
         if (data.last_data_update) {
           // Format date from YYYY-MM-DD to readable format
