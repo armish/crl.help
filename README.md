@@ -138,13 +138,71 @@ crl.help/
 └── README.md        # This file
 ```
 
+### Data Ingestion
+
+The application requires FDA CRL data to be loaded and processed. This is a one-time setup process that takes approximately **30 minutes**.
+
+#### Quick Start (Automated)
+
+The easiest way to ingest data is using the automated script:
+
+```bash
+cd backend
+
+# Set your OpenAI API key (required for AI features)
+export OPENAI_API_KEY=your_api_key_here
+
+# Run the automated ingestion pipeline
+python ingest_data.py
+```
+
+The script will:
+1. Download FDA CRL data from the openFDA API
+2. Generate AI-powered summaries for each CRL
+3. Extract product indications using AI
+4. Extract product names using AI
+5. Classify deficiency reasons
+6. Classify therapeutic categories
+7. Set the last data update timestamp
+
+The script includes:
+- Interactive confirmation prompts
+- Progress tracking with time estimates
+- Automatic cleanup of old data (with confirmation)
+- Error handling and recovery
+- Colored terminal output for better readability
+
+#### Manual Process (Advanced)
+
+If you prefer to run steps individually:
+
+```bash
+cd backend
+
+# Set your OpenAI API key
+export OPENAI_API_KEY=your_api_key_here
+
+# Clean old data (optional)
+rm -f data/crl_explorer.duckdb
+rm -f data/raw/*
+
+# Run each step
+python load_data.py                      # ~2 minutes
+python generate_summaries.py             # ~15 minutes
+python extract_indications.py            # ~5 minutes
+python extract_product_name.py           # ~3 minutes
+python classify_crl_reasons.py           # ~3 minutes
+python classify_crl_tx_category.py       # ~3 minutes
+python set_last_update.py                # <1 minute
+```
+
 ### Environment Variables
 
 The application can be configured with these environment variables:
 
 **Backend:**
 - `DATABASE_PATH`: Path to DuckDB database (default: `data/crl.duckdb`)
-- `OPENAI_API_KEY`: OpenAI API key for AI features
+- `OPENAI_API_KEY`: OpenAI API key for AI features (required for data ingestion)
 
 **Frontend:**
 - `VITE_API_BASE_URL`: Backend API URL (default: `http://localhost:8000`)
