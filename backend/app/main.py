@@ -21,6 +21,7 @@ from app.api import stats as stats_api
 from app.api import qa as qa_api
 from app.api import export as export_api
 from app.api import sitemap as sitemap_api
+from app.api import search as search_api
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -192,6 +193,7 @@ app.include_router(crls_api.router, prefix=f"{settings.api_prefix}/crls", tags=[
 app.include_router(stats_api.router, prefix=f"{settings.api_prefix}/stats", tags=["Statistics"])
 app.include_router(qa_api.router, prefix=f"{settings.api_prefix}/qa", tags=["Q&A"])
 app.include_router(export_api.router, prefix=f"{settings.api_prefix}/export", tags=["Export"])
+app.include_router(search_api.router, prefix=f"{settings.api_prefix}/search", tags=["Search"])
 app.include_router(sitemap_api.router, tags=["Sitemap"])
 
 

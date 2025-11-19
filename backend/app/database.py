@@ -310,6 +310,174 @@ class CRLRepository:
 
         return crls, total_count
 
+    def search_keywords(
+        self,
+        query: str,
+        limit: int = 50,
+        offset: int = 0
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """
+        Search CRLs using keyword matching across multiple fields.
+
+        Searches across: company_name, product_name, therapeutic_category,
+        deficiency_reason, summary, and text fields.
+
+        Args:
+            query: Search query string
+            limit: Maximum number of results to return
+            offset: Number of results to skip
+
+        Returns:
+            Tuple[List[Dict], int]: (List of CRLs with match context, total count)
+
+        Each result dict includes:
+            - All CRL fields
+            - matched_fields: List of field names where matches were found
+            - match_snippets: Dict mapping field names to context snippets
+        """
+        if not query or not query.strip():
+            return [], 0
+
+        # Normalize query
+        query_lower = query.strip().lower()
+
+        # Fields to search (excluding summary since it's in a separate table)
+        search_fields = [
+            'c.company_name',
+            'c.product_name',
+            'c.therapeutic_category',
+            'c.deficiency_reason',
+            's.summary',
+            'c.text'
+        ]
+
+        # Build WHERE clause for matching
+        conditions = []
+        for field in search_fields:
+            conditions.append(f"LOWER({field}) LIKE ?")
+
+        where_clause = " OR ".join(conditions)
+
+        # Prepare parameters (same query for each field)
+        search_params = [f"%{query_lower}%"] * len(search_fields)
+
+        # Get total count
+        count_query = f"""
+        SELECT COUNT(DISTINCT c.id)
+        FROM crls c
+        LEFT JOIN crl_summaries s ON c.id = s.crl_id
+        WHERE {where_clause}
+        """
+        total_count = self.conn.execute(count_query, search_params).fetchone()[0]
+
+        # Get paginated results
+        query_sql = f"""
+        SELECT
+            c.*,
+            s.summary,
+            regexp_extract(c.application_number[1], '^([A-Z]+)', 1) as application_type
+        FROM crls c
+        LEFT JOIN crl_summaries s ON c.id = s.crl_id
+        WHERE {where_clause}
+        ORDER BY c.letter_date DESC
+        LIMIT ? OFFSET ?
+        """
+        params = search_params + [limit, offset]
+
+        results = self.conn.execute(query_sql, params).fetchall()
+        columns = [desc[0] for desc in self.conn.description]
+
+        crls_with_context = []
+        for row in results:
+            crl = dict(zip(columns, row))
+
+            # Extract match information
+            matched_fields = []
+            match_snippets = {}
+
+            # Map table-qualified field names to actual field names in result
+            field_map = {
+                'c.company_name': 'company_name',
+                'c.product_name': 'product_name',
+                'c.therapeutic_category': 'therapeutic_category',
+                'c.deficiency_reason': 'deficiency_reason',
+                's.summary': 'summary',
+                'c.text': 'text'
+            }
+
+            for qualified_field, actual_field in field_map.items():
+                field_value = crl.get(actual_field)
+                if field_value and isinstance(field_value, str):
+                    field_value_lower = field_value.lower()
+                    if query_lower in field_value_lower:
+                        matched_fields.append(actual_field)
+
+                        # Extract context snippet
+                        snippet = self._extract_snippet(
+                            field_value,
+                            query_lower,
+                            context_chars=100
+                        )
+                        match_snippets[actual_field] = snippet
+
+            crl['matched_fields'] = matched_fields
+            crl['match_snippets'] = match_snippets
+            crls_with_context.append(crl)
+
+        return crls_with_context, total_count
+
+    def _extract_snippet(
+        self,
+        text: str,
+        query: str,
+        context_chars: int = 100
+    ) -> Dict[str, str]:
+        """
+        Extract a snippet of text around the query match.
+
+        Args:
+            text: Full text to search within
+            query: Query string to find
+            context_chars: Number of characters to include before/after match
+
+        Returns:
+            Dict with 'before', 'match', 'after' keys
+        """
+        text_lower = text.lower()
+        query_lower = query.lower()
+
+        # Find first occurrence
+        match_pos = text_lower.find(query_lower)
+        if match_pos == -1:
+            return {
+                'before': '',
+                'match': '',
+                'after': ''
+            }
+
+        # Extract the actual match (preserving original case)
+        match_text = text[match_pos:match_pos + len(query)]
+
+        # Extract context before
+        start_pos = max(0, match_pos - context_chars)
+        before = text[start_pos:match_pos]
+        if start_pos > 0:
+            # Add ellipsis if truncated
+            before = '...' + before.lstrip()
+
+        # Extract context after
+        end_pos = min(len(text), match_pos + len(query) + context_chars)
+        after = text[match_pos + len(query):end_pos]
+        if end_pos < len(text):
+            # Add ellipsis if truncated
+            after = after.rstrip() + '...'
+
+        return {
+            'before': before,
+            'match': match_text,
+            'after': after
+        }
+
     def exists(self, crl_id: str) -> bool:
         """
         Check if CRL exists.
