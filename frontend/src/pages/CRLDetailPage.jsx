@@ -8,15 +8,15 @@
  * Example: /crl/BLA125360-2020/bla-pfizer-comirnaty
  */
 
-import { useParams, Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useCRL } from '../services/queries';
 import CRLDetailContent from '../components/CRLDetailContent';
 import { parseCRLIdFromUrl } from '../utils/urlHelpers';
 
 export default function CRLDetailPage() {
-  const { '*': pathname } = useParams();
-  const crlId = parseCRLIdFromUrl(`/crl/${pathname}`);
+  const location = useLocation();
+  const crlId = parseCRLIdFromUrl(location.pathname);
 
   // Fetch CRL for SEO metadata
   const { data: crl } = useCRL(crlId);
