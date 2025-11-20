@@ -23,8 +23,8 @@ export default function PDFViewer({ pdfUrl }) {
   const [error, setError] = useState(null);
 
   // Construct proxied URL through our backend
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-  const proxiedUrl = `${API_BASE_URL}/api/pdf/proxy?url=${encodeURIComponent(pdfUrl)}`;
+  // Use relative path to work with Vite proxy in dev and same-origin in production
+  const proxiedUrl = `/api/pdf/proxy?url=${encodeURIComponent(pdfUrl)}`;
 
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages);
