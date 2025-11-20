@@ -215,9 +215,7 @@ export default function CRLDetailContent({ crlId }) {
 
         {activeTab === 'pdf' && (
           <div className="h-[800px]">
-            <PDFViewer
-              pdfUrl={`https://download.open.fda.gov/crl/${crl.file_name}`}
-            />
+            <PDFViewer pdfFilename={crl.file_name} />
           </div>
         )}
 
