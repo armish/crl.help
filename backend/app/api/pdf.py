@@ -39,7 +39,8 @@ async def proxy_pdf(
     allowed_domains = [
         "fda.gov",
         "www.fda.gov",
-        "download.open.fda.gov"
+        "download.open.fda.gov",
+        "open.fda.gov"
     ]
 
     if not any(domain in url.lower() for domain in allowed_domains):

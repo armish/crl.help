@@ -41,7 +41,7 @@ class CRLDetail(CRLBase):
     company_rep: Optional[str] = None
     approver_name: Optional[str] = None
     approver_title: Optional[str] = None
-    file_name: Optional[str] = None
+    file_name: Optional[str] = None  # PDF filename for constructing download URL
     therapeutic_category: Optional[str] = None
     product_name: Optional[str] = None
     indications: Optional[str] = None
