@@ -60,12 +60,15 @@ export const getCRLDetailUrl = (crl) => {
   const slug = parts.filter(Boolean).join('-');
 
   // Return full URL path
+  // URL-encode the ID to handle special characters like slashes
+  const encodedId = encodeURIComponent(crl.id);
+
   if (slug) {
-    return `/crl/${crl.id}/${slug}`;
+    return `/crl/${encodedId}/${slug}`;
   }
 
   // Fallback if no descriptive information is available
-  return `/crl/${crl.id}`;
+  return `/crl/${encodedId}`;
 };
 
 /**
@@ -76,5 +79,13 @@ export const getCRLDetailUrl = (crl) => {
  */
 export const parseCRLIdFromUrl = (pathname) => {
   const match = pathname.match(/^\/crl\/([^\/]+)/);
-  return match ? match[1] : null;
+  if (!match) return null;
+
+  // Decode the URL-encoded ID to handle special characters like slashes
+  try {
+    return decodeURIComponent(match[1]);
+  } catch (e) {
+    // If decoding fails, return the original matched value
+    return match[1];
+  }
 };
