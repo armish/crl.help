@@ -14,6 +14,7 @@
 
 import { useState } from 'react';
 import { useCRL, useCRLText } from '../services/queries';
+import PDFViewer from './PDFViewer';
 
 export default function CRLDetailContent({ crlId }) {
   const [activeTab, setActiveTab] = useState('summary');
@@ -153,6 +154,18 @@ export default function CRLDetailContent({ crlId }) {
           >
             Executive Summary
           </button>
+          {crl.file_name && (
+            <button
+              onClick={() => setActiveTab('pdf')}
+              className={`px-4 py-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'pdf'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              PDF Document
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('text')}
             className={`px-4 py-2 border-b-2 font-medium text-sm transition-colors ${
@@ -197,6 +210,14 @@ export default function CRLDetailContent({ crlId }) {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'pdf' && (
+          <div className="h-[800px]">
+            <PDFViewer
+              pdfUrl={`https://download.open.fda.gov/crl/${crl.file_name}`}
+            />
           </div>
         )}
 

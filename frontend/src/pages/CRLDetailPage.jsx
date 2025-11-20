@@ -8,18 +8,15 @@
  * Example: /crl/BLA125360-2020/bla-pfizer-comirnaty
  */
 
-import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useCRL } from '../services/queries';
 import CRLDetailContent from '../components/CRLDetailContent';
-import PDFViewer from '../components/PDFViewer';
 import { parseCRLIdFromUrl } from '../utils/urlHelpers';
 
 export default function CRLDetailPage() {
   const { '*': pathname } = useParams();
   const crlId = parseCRLIdFromUrl(`/crl/${pathname}`);
-  const [activeTab, setActiveTab] = useState('summary');
 
   // Fetch CRL for SEO metadata
   const { data: crl } = useCRL(crlId);
@@ -119,54 +116,9 @@ export default function CRLDetailPage() {
             )}
           </div>
 
-          {/* Tabs */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            {/* Tab Navigation */}
-            <div className="border-b border-gray-200">
-              <nav className="flex -mb-px">
-                <button
-                  onClick={() => setActiveTab('summary')}
-                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'summary'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
-                  }`}
-                >
-                  Summary
-                </button>
-                <button
-                  onClick={() => setActiveTab('pdf')}
-                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'pdf'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
-                  }`}
-                >
-                  PDF Document
-                </button>
-              </nav>
-            </div>
-
-            {/* Tab Content */}
-            <div className="p-6">
-              {activeTab === 'summary' && <CRLDetailContent crlId={crlId} />}
-              {activeTab === 'pdf' && crl?.file_name && (
-                <div className="h-[800px]">
-                  <PDFViewer
-                    pdfUrl={`https://download.open.fda.gov/crl/${crl.file_name}`}
-                  />
-                </div>
-              )}
-              {activeTab === 'pdf' && !crl?.file_name && (
-                <div className="flex flex-col items-center justify-center p-12 text-gray-500">
-                  <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <p className="text-lg font-medium">PDF Not Available</p>
-                  <p className="text-sm mt-2">The PDF document for this CRL is not available.</p>
-                </div>
-              )}
-            </div>
+          {/* CRL Details */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <CRLDetailContent crlId={crlId} />
           </div>
 
           {/* Back to explorer link */}
