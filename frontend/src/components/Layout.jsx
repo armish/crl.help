@@ -17,6 +17,7 @@ export default function Layout({ children }) {
 
   const navItems = [
     { path: '/', label: 'Explore' },
+    { path: '/search', label: 'Search' },
     { path: '/about-crl', label: 'What is a CRL?' },
     { path: 'https://github.com/armish/crl.help/issues', label: 'Feedback', external: true },
   ];
@@ -71,8 +72,8 @@ export default function Layout({ children }) {
         isScrolled ? 'py-2' : 'py-4'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="hover:opacity-80 transition-opacity">
+          <div className="flex items-center justify-between gap-4">
+            <Link to="/" className="hover:opacity-80 transition-opacity flex-shrink-0">
               <h1 className={`font-bold text-gray-900 transition-all duration-500 ease-in-out ${
                 isScrolled ? 'text-xl' : 'text-[2rem]'
               }`}>
@@ -86,7 +87,7 @@ export default function Layout({ children }) {
             </Link>
 
             {/* Navigation */}
-            <nav className="hidden md:flex space-x-6">
+            <nav className="hidden md:flex space-x-6 flex-shrink-0">
               {navItems.map((item) => (
                 item.external ? (
                   <a

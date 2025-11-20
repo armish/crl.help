@@ -16,6 +16,7 @@ import HomePage from './pages/HomePage';
 import AboutCRL from './pages/AboutCRL';
 import CRLDetailPage from './pages/CRLDetailPage';
 import CRLIndexPage from './pages/CRLIndexPage';
+import SearchPage from './pages/SearchPage';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -36,6 +37,7 @@ function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/search" element={<SearchPage />} />
               <Route path="/about-crl" element={<AboutCRL />} />
               <Route path="/crl-index" element={<CRLIndexPage />} />
               <Route path="/crl/*" element={<CRLDetailPage />} />

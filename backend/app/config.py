@@ -120,6 +120,19 @@ class Settings(BaseSettings):
         description="Number of top similar CRLs to retrieve for RAG"
     )
 
+    # reCAPTCHA Configuration (for semantic search rate limiting)
+    recaptcha_secret_key: str = Field(
+        default="",
+        description="Google reCAPTCHA v3 secret key for backend validation"
+    )
+
+    recaptcha_min_score: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Minimum reCAPTCHA score to allow (0.0-1.0, higher = more strict)"
+    )
+
     # Model configuration for Pydantic v2
     model_config = SettingsConfigDict(
         env_file=".env",
