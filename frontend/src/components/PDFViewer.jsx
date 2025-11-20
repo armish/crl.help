@@ -24,7 +24,11 @@ export default function PDFViewer({ pdfFilename }) {
 
   // Construct proxied URL through our backend
   // Pass only the filename - backend will construct the full FDA URL
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  // In production (Docker), VITE_API_BASE_URL is empty string, so we use relative URLs
+  // In development, it defaults to http://localhost:8000
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL !== undefined
+    ? import.meta.env.VITE_API_BASE_URL
+    : 'http://localhost:8000';
   const proxiedUrl = `${API_BASE_URL}/api/pdf/proxy?filename=${encodeURIComponent(pdfFilename)}`;
 
   function onDocumentLoadSuccess({ numPages }) {

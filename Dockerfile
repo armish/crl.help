@@ -14,6 +14,10 @@ RUN npm ci --legacy-peer-deps
 # Copy frontend source
 COPY frontend/ ./
 
+# Set API base URL for production build
+# In production, the frontend will use relative URLs since both are served from the same domain
+ENV VITE_API_BASE_URL=""
+
 # Build frontend for production
 RUN npm run build
 
