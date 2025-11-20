@@ -15,7 +15,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 // Configure PDF.js worker - use unpkg CDN for the exact version react-pdf uses
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-export default function PDFViewer({ pdfUrl }) {
+export default function PDFViewer({ pdfFilename }) {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
@@ -23,8 +23,9 @@ export default function PDFViewer({ pdfUrl }) {
   const [error, setError] = useState(null);
 
   // Construct proxied URL through our backend
-  // Use relative path to work with Vite proxy in dev and same-origin in production
-  const proxiedUrl = `/api/pdf/proxy?url=${encodeURIComponent(pdfUrl)}`;
+  // Pass only the filename - backend will construct the full FDA URL
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const proxiedUrl = `${API_BASE_URL}/api/pdf/proxy?filename=${encodeURIComponent(pdfFilename)}`;
 
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages);
@@ -149,8 +150,8 @@ export default function PDFViewer({ pdfUrl }) {
             <Page
               pageNumber={pageNumber}
               scale={scale}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
             />
           </Document>
         </div>

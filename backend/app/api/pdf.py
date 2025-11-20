@@ -17,37 +17,37 @@ router = APIRouter(prefix="/pdf", tags=["PDF"])
 
 @router.get("/proxy")
 async def proxy_pdf(
-    url: str = Query(..., description="URL of the PDF to proxy")
+    filename: str = Query(..., description="CRL PDF filename (e.g., 'BLA761320_20250827.pdf')")
 ):
     """
-    Proxy a PDF file from an external URL (typically FDA).
+    Proxy a CRL PDF file from FDA's servers.
 
-    This endpoint fetches a PDF from an external source and streams it back
-    to the client. This is necessary to avoid CORS issues when using PDF.js
-    to display PDFs from external domains.
+    This endpoint fetches a CRL PDF from FDA and streams it back to the client.
+    This is necessary to avoid CORS issues when using PDF.js to display PDFs.
+
+    Security: Only accepts a filename and constructs the FDA URL server-side
+    to prevent arbitrary URL proxying.
 
     Args:
-        url: Full URL of the PDF file to fetch
+        filename: CRL PDF filename (without path, e.g., 'BLA761320_20250827.pdf')
 
     Returns:
         StreamingResponse with PDF content
 
     Raises:
-        HTTPException: If URL is invalid or PDF cannot be fetched
+        HTTPException: If filename is invalid or PDF cannot be fetched
     """
-    # Validate that URL is from FDA
-    allowed_domains = [
-        "fda.gov",
-        "www.fda.gov",
-        "download.open.fda.gov",
-        "open.fda.gov"
-    ]
-
-    if not any(domain in url.lower() for domain in allowed_domains):
+    # Validate filename format (only alphanumeric, underscores, hyphens, and .pdf extension)
+    import re
+    if not re.match(r'^[a-zA-Z0-9_\-]+\.pdf$', filename):
         raise HTTPException(
             status_code=400,
-            detail="Only FDA URLs are allowed for security reasons"
+            detail="Invalid filename format. Only alphanumeric characters, underscores, hyphens, and .pdf extension are allowed."
         )
+
+    # Construct the FDA URL
+    # All CRL PDFs are hosted at: https://download.open.fda.gov/crl/{filename}
+    url = f"https://download.open.fda.gov/crl/{filename}"
 
     try:
         # Fetch the PDF
