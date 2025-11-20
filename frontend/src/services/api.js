@@ -74,4 +74,42 @@ api.interceptors.response.use(
   }
 );
 
+// ============================================================================
+// Search API Functions
+// ============================================================================
+
+/**
+ * Perform keyword-based search across CRL fields.
+ *
+ * @param {string} query - Search query string
+ * @param {number} [limit=50] - Number of results per page (1-100)
+ * @param {number} [offset=0] - Number of results to skip for pagination
+ * @returns {Promise} Response with search results and metadata
+ */
+export const keywordSearch = async (query, limit = 50, offset = 0) => {
+  const response = await api.post('/search/keyword', {
+    query,
+    limit,
+    offset,
+  });
+  return response.data;
+};
+
+/**
+ * Perform semantic (AI-powered) search using embeddings.
+ *
+ * @param {string} query - Search query string
+ * @param {number} [topK=5] - Number of most similar CRLs to return (1-20)
+ * @param {string} captchaToken - reCAPTCHA v3 token for bot protection
+ * @returns {Promise} Response with semantically similar CRLs and scores
+ */
+export const semanticSearch = async (query, topK = 5, captchaToken) => {
+  const response = await api.post('/search/semantic', {
+    query,
+    top_k: topK,
+    captcha_token: captchaToken,
+  });
+  return response.data;
+};
+
 export default api;
