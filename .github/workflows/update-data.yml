@@ -1,0 +1,131 @@
+name: Update CRL Data
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: 'Force update even if no changes detected'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed for creating releases
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check for FDA data updates
+        id: check_updates
+        working-directory: backend
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AI_DRY_RUN: 'true'  # Use dry-run for check phase
+        run: |
+          if [ "${{ inputs.force_update }}" == "true" ]; then
+            echo "Force update requested"
+            echo "data_changed=true" >> $GITHUB_OUTPUT
+          else
+            # Check if data has changed (exit 0 = changed, exit 1 = no change)
+            if python check_for_updates.py; then
+              echo "FDA data has changed"
+              echo "data_changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "No FDA data changes detected"
+              echo "data_changed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Run data ingestion pipeline
+        if: steps.check_updates.outputs.data_changed == 'true'
+        working-directory: backend
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "Starting full data ingestion pipeline..."
+          python ingest_data_ci.py
+
+      - name: Verify database was created
+        if: steps.check_updates.outputs.data_changed == 'true'
+        working-directory: backend
+        run: |
+          if [ -f "data/crl_explorer.duckdb" ]; then
+            echo "Database created successfully"
+            ls -lh data/crl_explorer.duckdb
+          else
+            echo "ERROR: Database file not found!"
+            exit 1
+          fi
+
+      - name: Get current date for release tag
+        if: steps.check_updates.outputs.data_changed == 'true'
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release with database
+        if: steps.check_updates.outputs.data_changed == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: data-${{ steps.date.outputs.date }}
+          name: CRL Database - ${{ steps.date.outputs.date }}
+          body: |
+            Automated CRL database update.
+
+            This release contains the latest FDA CRL data with AI-generated summaries.
+
+            **Download:** `crl_explorer.duckdb`
+
+            **Usage:**
+            ```bash
+            # Download directly
+            wget https://github.com/${{ github.repository }}/releases/download/data-${{ steps.date.outputs.date }}/crl_explorer.duckdb
+
+            # Or use with Docker
+            docker run -d \
+              -p 80:80 \
+              -e DATABASE_URL=https://github.com/${{ github.repository }}/releases/download/data-${{ steps.date.outputs.date }}/crl_explorer.duckdb \
+              ghcr.io/${{ github.repository }}:latest
+            ```
+          files: backend/data/crl_explorer.duckdb
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## CRL Data Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_updates.outputs.data_changed }}" == "true" ]; then
+            echo "✅ Data was updated and new release created" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Release:** data-${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Database URL:**" >> $GITHUB_STEP_SUMMARY
+            echo "\`https://github.com/${{ github.repository }}/releases/download/data-${{ steps.date.outputs.date }}/crl_explorer.duckdb\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ No FDA data changes detected - skipped update" >> $GITHUB_STEP_SUMMARY
+          fi
