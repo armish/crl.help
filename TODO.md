@@ -1,8 +1,10 @@
-# FDA CRL Explorer - Implementation Plan
+# FDA CRL Explorer - Current State & Future Plans
 
 ## Project Overview
 
-A full-stack Python application for mining and exploring FDA Complete Response Letters with AI-powered summarization, semantic search, and interactive Q&A capabilities.
+A full-stack Python application for exploring FDA Complete Response Letters with AI-powered summarization.
+
+The webapp is in a really great place! This document focuses on realistic, achievable goals.
 
 ---
 
@@ -11,8 +13,7 @@ A full-stack Python application for mining and exploring FDA Complete Response L
 ### Backend
 - **Framework**: FastAPI (async, modern, auto-generated API docs)
 - **Database**: DuckDB (embedded, excellent JSON support, analytics-optimized, no separate server needed)
-- **AI Services**: OpenAI API (GPT-4o-mini for summarization, text-embedding-3-small for embeddings)
-- **Task Scheduling**: APScheduler (lightweight, in-process scheduler)
+- **AI Services**: OpenAI API (GPT-4o-mini for summarization)
 - **Data Processing**: pandas (data manipulation), httpx (async HTTP client)
 
 ### Frontend
@@ -23,10 +24,9 @@ A full-stack Python application for mining and exploring FDA Complete Response L
 - **State Management**: Zustand (lightweight, simple)
 
 ### Why This Stack?
-- **DuckDB**: Perfect for this use case - handles JSON natively, fast analytics queries, embedded (no server), supports vector similarity search via extensions
+- **DuckDB**: Perfect for this use case - handles JSON natively, fast analytics queries, embedded (no server)
 - **FastAPI**: Modern async Python framework, auto-generated OpenAPI docs, excellent validation with Pydantic
-- **Small scale**: 392 records currently, but architecture scales to millions with DuckDB
-- **RAG-ready**: DuckDB can handle vector similarity with vss extension, or we can use simple cosine similarity
+- **Small scale**: ~400 records, simple and efficient
 - **Cost-effective**: No separate database server, minimal infrastructure
 
 ---
@@ -36,50 +36,39 @@ A full-stack Python application for mining and exploring FDA Complete Response L
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Frontend (React)                         │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │  Table   │  │  Filters │  │  Detail  │  │   Q&A    │   │
-│  │  View    │  │    UI    │  │  Modal   │  │  Panel   │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                 │
+│  │  Table   │  │  Filters │  │  Detail  │                 │
+│  │  View    │  │    UI    │  │  Modal   │                 │
+│  └──────────┘  └──────────┘  └──────────┘                 │
 └───────────────────────────┬─────────────────────────────────┘
                             │ HTTP/JSON
                             │
 ┌───────────────────────────▼─────────────────────────────────┐
 │                  Backend API (FastAPI)                       │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │  REST Endpoints: /crls, /stats, /qa, /export        │  │
+│  │  REST Endpoints: /crls, /stats                       │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                            │                                 │
-│  ┌────────────────┬────────┴────────┬──────────────────┐   │
-│  │  Data          │  AI Services    │  RAG Engine      │   │
-│  │  Ingestion     │  - Summarize    │  - Embed Search  │   │
-│  │  Service       │  - Embeddings   │  - Q&A           │   │
-│  └────────────────┴─────────────────┴──────────────────┘   │
-│                            │                                 │
-│  ┌────────────────────────▼─────────────────────────────┐  │
-│  │         APScheduler (Daily Tasks)                    │  │
-│  │  - Download bulk data                                │  │
-│  │  - Process new CRLs                                  │  │
-│  │  - Generate summaries & embeddings                   │  │
-│  └──────────────────────────────────────────────────────┘  │
+│  ┌────────────────┬────────┴────────────────────────────┐  │
+│  │  Data          │  AI Services                        │  │
+│  │  Ingestion     │  - Summarization                    │  │
+│  │  Service       │                                     │  │
+│  └────────────────┴─────────────────────────────────────┘  │
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────────┐
 │                    DuckDB Database                           │
 │  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │ crls        │  │ crl_         │  │ crl_embeddings   │  │
-│  │ (raw data)  │  │ summaries    │  │ (vectors)        │  │
+│  │ crls        │  │ crl_         │  │ metadata         │  │
+│  │ (raw data)  │  │ summaries    │  │ (job status)     │  │
 │  └─────────────┘  └──────────────┘  └──────────────────┘  │
-│  ┌─────────────┐  ┌──────────────┐                         │
-│  │ qa_         │  │ metadata     │                         │
-│  │ annotations │  │ (job status) │                         │
-│  └─────────────┘  └──────────────┘                         │
 └─────────────────────────────────────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────────┐
 │                    External Services                         │
 │  ┌──────────────────┐  ┌────────────────────────────────┐  │
 │  │ FDA API          │  │ OpenAI API                     │  │
-│  │ (bulk download)  │  │ (summarization & embeddings)   │  │
+│  │ (bulk download)  │  │ (summarization)                │  │
 │  └──────────────────┘  └────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -127,34 +116,6 @@ CREATE TABLE crl_summaries (
 );
 ```
 
-### Table: `crl_embeddings`
-Stores vector embeddings for RAG.
-
-```sql
-CREATE TABLE crl_embeddings (
-    id VARCHAR PRIMARY KEY,
-    crl_id VARCHAR REFERENCES crls(id),
-    embedding_type VARCHAR,                    -- "summary" or "full_text"
-    embedding FLOAT[],                         -- Vector (1536 dimensions for text-embedding-3-small)
-    model VARCHAR,                             -- e.g., "text-embedding-3-small"
-    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### Table: `qa_annotations`
-Stores user questions and AI answers.
-
-```sql
-CREATE TABLE qa_annotations (
-    id VARCHAR PRIMARY KEY,
-    question TEXT,
-    answer TEXT,
-    relevant_crl_ids VARCHAR[],                -- CRLs used to answer
-    model VARCHAR,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    tokens_used INTEGER
-);
-```
 
 ### Table: `processing_metadata`
 Tracks processing status.
@@ -467,43 +428,6 @@ coverage[toml]==7.3.2
 
 ---
 
-### Phase 5: RAG Implementation ✅ COMPLETED
-
-#### 5.1 Vector Search ✅ COMPLETED
-- [x] Create `app/utils/vector_utils.py`
-- [x] Implement cosine similarity function with optimizations
-- [x] Implement `find_top_k_similar()` function:
-  - Query all embeddings from database
-  - Calculate similarity scores using various metrics
-  - Return top-k CRL IDs with scores
-  - Support for cosine, euclidean, dot product similarities
-- [x] Comprehensive vector utilities (normalize, magnitude, mean, etc.)
-- [x] 52 comprehensive tests for all vector operations
-
-#### 5.2 RAG Service ✅ COMPLETED
-- [x] Create `app/services/rag.py`
-- [x] Implement `answer_question(question: str)` function:
-  1. Generate embedding for question
-  2. Retrieve top-k relevant CRLs (k=5, configurable)
-  3. Construct context from retrieved CRLs
-  4. Build prompt for GPT-4o-mini with FDA expertise
-  5. Call OpenAI API
-  6. Store Q&A in `qa_annotations` table
-  7. Return answer with cited CRL IDs
-- [x] Add fallback for no relevant CRLs found
-- [x] Implement confidence scoring based on similarity
-- [x] Created CLI script `ask_question.py` for interactive Q&A
-
-#### 5.3 Testing ✅ COMPLETED
-- [x] Test with sample questions (dry-run mode)
-- [x] Verify retrieval accuracy
-- [x] Test edge cases (no relevant CRLs, empty questions)
-- [x] Evaluate answer quality
-- [x] Test confidence computation
-- [x] Test Q&A history storage and retrieval
-
----
-
 ### Phase 7: Backend API (FastAPI) ✅ COMPLETED
 
 #### 7.1 Main Application ✅ COMPLETED
@@ -548,13 +472,6 @@ coverage[toml]==7.3.2
   - `GET /api/stats/companies` - Top companies by CRL count
     - Sorted by CRL count with approved/unapproved breakdown
 
-#### 7.5 Q&A Endpoints ✅ COMPLETED
-- [x] Create `app/api/qa.py`
-- [x] Implement endpoints:
-  - `POST /api/qa/ask` - Submit question (RAG-powered)
-    - Request: `{ "question": "...", "top_k": 5 }`
-    - Response: `{ "answer": "...", "relevant_crls": [...], "confidence": 0.85, "model": "..." }`
-  - `GET /api/qa/history` - Get past Q&A with pagination
 
 #### 7.6 Export Endpoints
 - [ ] Create `app/api/export.py` (deferred - not MVP critical)
@@ -562,344 +479,106 @@ coverage[toml]==7.3.2
 - [ ] Implement CSV/Excel export functionality
 
 #### 7.7 Testing ✅ COMPLETED
-- [x] Write API tests for all endpoints (26 comprehensive tests)
+- [x] Write API tests for all endpoints (comprehensive tests)
 - [x] Test filtering and pagination
 - [x] Test error responses (404, 400, 422, 500)
 - [x] Test CORS configuration
 - [x] Test health check with database stats
-- [x] Test Q&A with mocked RAG service
 - [x] Test API documentation accessibility
-- [x] All 26 tests passing in CI/CD environment
 - [x] Tests use in-memory database with mock data
 
 ---
 
-### Phase 6: Scheduled Tasks (DEFERRED - After MVP)
+## Current State - What's Working Great! ✅
 
-**Note**: As discussed, we're deferring scheduled tasks to avoid over-engineering. The priority is getting a working tool first, then adding automation later.
+### Backend ✅ COMPLETED
+- [x] FastAPI application with health checks
+- [x] DuckDB database with optimized schema
+- [x] Data ingestion pipeline from FDA API
+- [x] AI-powered summarization service
+- [x] REST API endpoints for CRLs and statistics
+- [x] Comprehensive test coverage
+- [x] Docker deployment setup
 
-#### 6.1 Scheduler Setup
-- [ ] Create `app/tasks/scheduler.py`
-- [ ] Configure APScheduler with BackgroundScheduler
-- [ ] Add shutdown hooks for graceful termination
-
-#### 6.2 Daily Data Pipeline Job
-- [ ] Create `daily_data_pipeline()` function:
-  1. Download bulk data
-  2. Parse and detect new CRLs
-  3. Store new CRLs in database
-  4. Generate summaries for new CRLs
-  5. Generate embeddings for new summaries
-  6. Update processing metadata
-  7. Log summary (X new CRLs processed)
-- [ ] Schedule to run at configured time (default: 2 AM)
-- [ ] Add error notifications (log errors prominently)
-- [ ] Implement idempotency (safe to run multiple times)
-
-#### 6.3 Initial Data Load
-- [x] CLI scripts created for manual execution:
-  - `load_data.py` - Download and process CRLs
-  - `generate_summaries.py` - Batch summarization
-  - `generate_embeddings.py` - Batch embedding generation
-  - `ask_question.py` - Interactive Q&A
-- [ ] Convert to scheduled automation (future enhancement)
-
-#### 6.4 Testing
-- [ ] Test scheduler starts correctly
-- [ ] Verify job runs on schedule
-- [ ] Test error handling
-- [ ] Ensure no duplicate processing
+### Frontend ✅ COMPLETED
+- [x] React + Vite application
+- [x] Beautiful UI with Tailwind CSS + shadcn/ui
+- [x] Interactive CRL table with filtering and sorting
+- [x] Detail modal with AI summaries
+- [x] Statistics dashboard
+- [x] Responsive design
+- [x] Production deployment ready
 
 ---
 
-### Phase 8: Frontend - Foundation
+## Automated Data Updates ✅ IMPLEMENTED
 
-#### 8.1 Project Setup
-- [ ] Initialize Vite + React project: `npm create vite@latest frontend -- --template react`
-- [ ] Install dependencies:
-  ```bash
-  npm install @tanstack/react-query @tanstack/react-table
-  npm install zustand axios
-  npm install tailwindcss postcss autoprefixer
-  npm install @headlessui/react @heroicons/react
-  npm install react-router-dom
-  ```
-- [ ] Install shadcn/ui components: `npx shadcn-ui@latest init`
-- [ ] Configure Tailwind CSS
-- [ ] Set up proxy for API calls in `vite.config.js`
+### How It Works
 
-#### 8.2 API Client
-- [ ] Create `src/services/api.js`:
-  - Axios instance with base URL
-  - Error interceptors
-  - Request/response logging
-- [ ] Create `src/services/queries.js`:
-  - React Query hooks for all endpoints
-  - `useСRLs()` - fetch CRLs with filters
-  - `useCRL(id)` - fetch single CRL
-  - `useStats()` - fetch statistics
-  - `useAskQuestion()` - mutation for Q&A
-  - `useExport()` - trigger export
+A GitHub Actions workflow runs daily to check if FDA data has changed. If changes are detected, it:
+1. Downloads fresh FDA data
+2. Runs the complete AI processing pipeline
+3. Uploads the new database to GitHub Releases
 
-#### 8.3 State Management
-- [ ] Create `src/store/filterStore.js` with Zustand:
-  - Filter state (approval_status, year, company, search text)
-  - Sort state
-  - Pagination state
-  - Actions to update filters
+### Components
 
-#### 8.4 Layout
-- [ ] Create main layout component with:
-  - Header (app title, navigation)
-  - Sidebar (filter panel)
-  - Main content area
-  - Footer (credits, links to FDA docs)
+**`backend/check_for_updates.py`** - Change Detection Script
+- Downloads FDA bulk data and computes SHA256 hash
+- Compares with previously stored hash in database
+- Exit code 0 = data changed, exit code 1 = no change
 
----
+**`backend/ingest_data_ci.py`** - Non-Interactive Pipeline
+- CI/CD-friendly version of `ingest_data.py`
+- No prompts, no confirmations
+- Runs all 7 pipeline steps automatically
 
-### Phase 9: Frontend - Core Features
+**`.github/workflows/update-data.yml`** - GitHub Actions Workflow
+- Runs daily at 2 AM UTC
+- Checks for FDA data changes
+- If changed: runs pipeline and creates new GitHub Release
+- Database uploaded to: `https://github.com/{repo}/releases/download/data-{date}/crl_explorer.duckdb`
 
-#### 9.1 Statistics Dashboard
-- [ ] Create `src/components/StatsCards.jsx`:
-  - Total CRLs card
-  - Approved/Unapproved breakdown
-  - Chart showing CRLs by year (bar chart)
-  - Top companies (pie chart or list)
-- [ ] Use Chart.js or Recharts for visualizations
+### Setup Required
 
-#### 9.2 Filter Panel
-- [ ] Create `src/components/FilterPanel.jsx`:
-  - Search input (full-text search)
-  - Approval status dropdown/radio buttons
-  - Year multi-select
-  - Company autocomplete/select
-  - FDA Center multi-select
-  - Clear filters button
-- [ ] Connect to filterStore
-- [ ] Debounce search input
+1. **Add GitHub Secret**: `OPENAI_API_KEY`
+   - Go to repo Settings → Secrets and variables → Actions
+   - Add new secret named `OPENAI_API_KEY`
 
-#### 9.3 CRL Table
-- [ ] Create `src/components/CRLTable.jsx` using TanStack Table:
-  - Columns: Application #, Company, Date, Year, Status, FDA Center
-  - Row click to open detail modal
-  - Sortable columns
-  - Loading states
-  - Empty state
-- [ ] Implement virtualization if needed (react-virtual)
-- [ ] Add pagination controls
-- [ ] Highlight search matches
+2. **Manual Trigger** (optional):
+   - Go to Actions → "Update CRL Data" → Run workflow
+   - Check "Force update" to bypass change detection
 
-#### 9.4 Detail Modal
-- [ ] Create `src/components/CRLDetailModal.jsx`:
-  - Modal overlay (Headless UI Dialog)
-  - Display all CRL metadata
-  - Show AI-generated summary prominently
-  - Full letter text (collapsible or tabbed)
-  - Download PDF button (if file_name available)
-  - Close button
-- [ ] Responsive design for mobile
+### Usage
 
-#### 9.5 Q&A Panel
-- [ ] Create `src/components/QAPanel.jsx`:
-  - Question input textarea
-  - Submit button
-  - Loading state while processing
-  - Display answer with formatting
-  - Show cited CRLs (clickable to open modal)
-  - Q&A history list (optional)
-- [ ] Add character limit warning
-- [ ] Show token usage/cost estimate
+**Download latest database:**
+```bash
+# Find latest release
+gh release list --repo armish/crl.help
 
-#### 9.6 Export Functionality
-- [ ] Create `src/components/ExportButton.jsx`:
-  - Dropdown menu: Export CSV / Export Excel
-  - Checkbox: Include summaries
-  - Checkbox: Include current filters only
-  - Trigger download
-- [ ] Handle loading state
-- [ ] Show success notification
+# Download database
+gh release download data-2025-01-15 --pattern "*.duckdb" --repo armish/crl.help
+```
+
+**Use with Docker:**
+```bash
+docker run -d -p 80:80 \
+  -e DATABASE_URL=https://github.com/armish/crl.help/releases/download/data-2025-01-15/crl_explorer.duckdb \
+  ghcr.io/armish/crl.help:latest
+```
 
 ---
 
-### Phase 10: Frontend - Polish & UX
+## Security Checklist ✅
 
-#### 10.1 Error Handling
-- [ ] Create error boundary component
-- [ ] Display user-friendly error messages
-- [ ] Add retry buttons for failed requests
-- [ ] Toast notifications for success/error (react-hot-toast)
-
-#### 10.2 Loading States
-- [ ] Skeleton loaders for table
-- [ ] Spinners for API calls
-- [ ] Progress indicators for Q&A processing
-- [ ] Optimistic updates where appropriate
-
-#### 10.3 Responsive Design
-- [ ] Mobile-friendly table (cards on small screens)
-- [ ] Responsive filter panel (drawer on mobile)
-- [ ] Touch-friendly interactions
-- [ ] Test on multiple screen sizes
-
-#### 10.4 Accessibility
-- [ ] Keyboard navigation
-- [ ] ARIA labels
-- [ ] Focus management (modals, dropdowns)
-- [ ] Screen reader testing
-
-#### 10.5 Performance
-- [ ] Code splitting (React.lazy)
-- [ ] Memoization (React.memo, useMemo)
-- [ ] Virtual scrolling for large lists
-- [ ] Image optimization (if any)
-
----
-
-### Phase 11: Security & Configuration
-
-#### 11.1 Environment Variables
-- [ ] Backend: Validate all required env vars on startup
-- [ ] Frontend: Create `.env` for API URL (no secrets!)
-- [ ] Document all environment variables in README
-
-#### 11.2 API Key Security
-- [ ] Verify API key is ONLY in backend
-- [ ] Never log API keys
-- [ ] Use environment variables (not hardcoded)
-- [ ] Add .env to .gitignore
-
-#### 11.3 CORS Configuration
-- [ ] Restrict CORS to specific frontend origin(s)
-- [ ] Test cross-origin requests
-- [ ] Document CORS settings
-
-#### 11.4 Rate Limiting (Optional)
-- [ ] Add rate limiting to public endpoints
-- [ ] Prevent abuse of OpenAI API
-- [ ] Consider SlowAPI or similar
-
-#### 11.5 Input Validation
-- [ ] Validate all API inputs with Pydantic
-- [ ] Sanitize user inputs
-- [ ] Prevent SQL injection (using parameterized queries)
-
----
-
-### Phase 12: Testing
-
-#### 12.1 Backend Tests
-- [ ] Unit tests for services:
-  - Data ingestion
-  - Summarization
-  - Embeddings
-  - RAG
-- [ ] Integration tests for API endpoints
-- [ ] Test error scenarios
-- [ ] Aim for >80% code coverage
-
-#### 12.2 Frontend Tests
-- [ ] Component tests (React Testing Library):
-  - Table rendering
-  - Filtering
-  - Modal interactions
-- [ ] Integration tests for user flows
-- [ ] E2E tests (Playwright or Cypress) - optional
-
-#### 12.3 Manual Testing
-- [ ] Test complete user workflows
-- [ ] Cross-browser testing
-- [ ] Mobile testing
-- [ ] Performance testing
-
----
-
-### Phase 13: Documentation
-
-#### 13.1 Code Documentation
-- [ ] Add docstrings to all functions
-- [ ] Type hints for Python code
-- [ ] JSDoc comments for complex JS functions
-- [ ] Inline comments for complex logic
-
-#### 13.2 README Files
-- [ ] Root README.md:
-  - Project overview
-  - Architecture diagram
-  - Quick start guide
-  - Technology stack
-  - License
-- [ ] Backend README.md:
-  - Setup instructions
-  - Environment variables
-  - Running locally
-  - API documentation link
-  - Testing
-- [ ] Frontend README.md:
-  - Setup instructions
-  - Development server
-  - Build process
-  - Deployment
-
-#### 13.3 API Documentation
-- [ ] FastAPI auto-generated docs (available at /docs)
-- [ ] Add description to all endpoints
-- [ ] Add examples to request/response models
-- [ ] Document error codes
-
-#### 13.4 User Guide
-- [ ] Create simple user guide (optional):
-  - How to search CRLs
-  - Using filters
-  - Understanding summaries
-  - Asking questions
-  - Exporting data
-
----
-
-### Phase 14: Deployment Preparation
-
-#### 14.1 Docker Setup (Optional but Recommended)
-- [ ] Create `Dockerfile` for backend:
-  - Multi-stage build
-  - Copy only necessary files
-  - Install dependencies
-  - Expose port
-- [ ] Create `Dockerfile` for frontend:
-  - Build production bundle
-  - Serve with nginx
-- [ ] Create `docker-compose.yml`:
-  - Backend service
-  - Frontend service
-  - Volume for DuckDB data
-  - Environment variables
-
-#### 14.2 Production Configuration
-- [ ] Create production environment files
-- [ ] Configure logging for production
-- [ ] Set up error tracking (Sentry - optional)
-- [ ] Optimize build settings
-
-#### 14.3 Deployment Guide
-- [ ] Document deployment steps
-- [ ] Initial data load procedure
-- [ ] Backup and restore procedures
-- [ ] Monitoring and health checks
-
----
-
-## Security Checklist
-
-- [x] ✅ OpenAI API key stored in environment variable
-- [x] ✅ API key never exposed to frontend
-- [x] ✅ API key never logged
-- [x] ✅ .env file in .gitignore
-- [x] ✅ Pre-commit hook to prevent accidental secret exposure
-- [x] ✅ CORS restricted to specific origins
-- [x] ✅ All user inputs validated
-- [ ] ✅ No sensitive data in error messages
-- [ ] ✅ HTTPS in production (deployment consideration)
-- [ ] ✅ Rate limiting on API endpoints (optional)
-- [ ] ✅ No hardcoded secrets in code
+- [x] OpenAI API key stored in environment variable
+- [x] API key never exposed to frontend
+- [x] API key never logged
+- [x] .env file in .gitignore
+- [x] Pre-commit hook to prevent accidental secret exposure
+- [x] CORS restricted to specific origins
+- [x] All user inputs validated
+- [x] HTTPS in production (via hosting platform)
+- [x] No hardcoded secrets in code
 
 ---
 
@@ -909,21 +588,8 @@ coverage[toml]==7.3.2
 - **Perfect for analytics**: Optimized for read-heavy workloads
 - **Embedded**: No separate database server needed
 - **JSON support**: Native JSON columns for raw data storage
-- **Vector search**: Can handle embeddings with VSS extension or custom functions
-- **Small footprint**: Perfect for 392 records, scales to millions
+- **Small footprint**: Perfect for ~400 records
 - **Serverless-friendly**: Single file database, easy backups
-
-### Why Not PostgreSQL + pgvector?
-- Overkill for this scale (392 records)
-- Requires separate database server
-- More complex setup and maintenance
-- DuckDB provides everything we need
-
-### RAG Strategy
-- Embed summaries (shorter, more focused) rather than full text
-- Use cosine similarity for retrieval
-- Top-k=5 CRLs for context (adjustable)
-- Fallback to keyword search if embeddings fail
 
 ### Summarization Approach
 - Single paragraph (3-5 sentences)
@@ -931,81 +597,20 @@ coverage[toml]==7.3.2
 - GPT-4o-mini for cost efficiency
 - Cache summaries to avoid re-processing
 
-### Data Update Strategy
-- Daily bulk download (not real-time API calls)
-- Detect new/changed CRLs by comparing IDs
-- Only process new CRLs (incremental)
-- Keep processing metadata to track status
+### Data Update Strategy (Current)
+- Manual bulk download when needed
+- Full re-ingestion is fast (~5 minutes)
+- Simple and reliable
+- Automate only if data changes frequently
 
 ---
 
 ## Cost Estimation
 
-### OpenAI API Costs (Initial Load - 392 CRLs)
+### OpenAI API Costs (~400 CRLs)
 
 **Summarization (GPT-4o-mini):**
-- Input: ~500 tokens/CRL × 392 = 196,000 tokens
-- Output: ~100 tokens/CRL × 392 = 39,200 tokens
-- Cost: $0.15 per 1M input tokens, $0.60 per 1M output tokens
-- Total: ~$0.05
+- Total cost for initial setup: < $0.10
+- Ongoing costs: Minimal (few new CRLs per week/month)
 
-**Embeddings (text-embedding-3-small):**
-- ~100 tokens/summary × 392 = 39,200 tokens
-- Cost: $0.02 per 1M tokens
-- Total: ~$0.001
-
-**Total Initial Setup: < $0.10**
-
-**Ongoing Costs:**
-- Minimal (few new CRLs per day)
-- Q&A costs depend on user activity
-
----
-
-## Timeline Estimate
-
-| Phase | Duration | Description |
-|-------|----------|-------------|
-| Phase 1-2 | 1 day | Foundation, database setup |
-| Phase 3 | 1 day | Data ingestion pipeline |
-| Phase 4-5 | 2 days | AI services & RAG |
-| Phase 6 | 0.5 day | Scheduled tasks |
-| Phase 7 | 1.5 days | Backend API |
-| Phase 8-9 | 2 days | Frontend core features |
-| Phase 10 | 1 day | Frontend polish |
-| Phase 11-12 | 1 day | Security & testing |
-| Phase 13-14 | 1 day | Documentation & deployment |
-
-**Total: ~11 days** (assuming focused full-time work)
-
----
-
-## Success Metrics
-
-- [ ] All 392 CRLs successfully ingested
-- [ ] 100% summarization coverage
-- [ ] 100% embedding coverage
-- [ ] API response time < 500ms for list queries
-- [ ] Q&A response time < 10s
-- [ ] Frontend loads in < 2s
-- [ ] Zero API key leaks
-- [ ] Daily scheduled task runs reliably
-
----
-
-## Future Enhancements (Post-MVP)
-
-- [ ] Advanced analytics (trend analysis, deficiency categorization)
-- [ ] Email alerts for new CRLs matching user criteria
-- [ ] User accounts for saving searches/annotations
-- [ ] Comparison tool (compare multiple CRLs)
-- [ ] PDF viewer integration (if PDFs are accessible)
-- [ ] Mobile app
-- [ ] Export to other formats (JSON, Markdown)
-- [ ] API rate limiting dashboard
-- [ ] Multi-language support for summaries
-- [ ] Integration with other FDA APIs (drug labels, adverse events)
-
----
-
-*This plan provides a comprehensive roadmap for building a production-ready FDA CRL Explorer application with AI-powered features.*
+**Note:** Very cost-effective due to small dataset size.
