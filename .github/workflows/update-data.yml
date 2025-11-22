@@ -85,7 +85,7 @@ jobs:
         id: date
         run: echo "date=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release with database
+      - name: Create dated GitHub Release
         if: steps.check_updates.outputs.data_changed == 'true'
         uses: softprops/action-gh-release@v1
         with:
@@ -100,13 +100,16 @@ jobs:
 
             **Usage:**
             ```bash
-            # Download directly
+            # Download latest (always up-to-date URL)
+            wget https://github.com/${{ github.repository }}/releases/download/data-latest/crl_explorer.duckdb
+
+            # Or download this specific version
             wget https://github.com/${{ github.repository }}/releases/download/data-${{ steps.date.outputs.date }}/crl_explorer.duckdb
 
             # Or use with Docker
             docker run -d \
               -p 80:80 \
-              -e DATABASE_URL=https://github.com/${{ github.repository }}/releases/download/data-${{ steps.date.outputs.date }}/crl_explorer.duckdb \
+              -e DATABASE_URL=https://github.com/${{ github.repository }}/releases/download/data-latest/crl_explorer.duckdb \
               ghcr.io/${{ github.repository }}:latest
             ```
           files: backend/data/crl_explorer.duckdb
@@ -115,17 +118,47 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Update data-latest release
+        if: steps.check_updates.outputs.data_changed == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: data-latest
+          name: CRL Database - Latest
+          body: |
+            **Latest FDA CRL database** (updated ${{ steps.date.outputs.date }})
+
+            This release always contains the most recent database. Use this URL for a stable download link:
+
+            ```bash
+            wget https://github.com/${{ github.repository }}/releases/download/data-latest/crl_explorer.duckdb
+            ```
+
+            For Docker:
+            ```bash
+            docker run -d -p 80:80 \
+              -e DATABASE_URL=https://github.com/${{ github.repository }}/releases/download/data-latest/crl_explorer.duckdb \
+              ghcr.io/${{ github.repository }}:latest
+            ```
+
+            See dated releases for version history.
+          files: backend/data/crl_explorer.duckdb
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Summary
         run: |
           echo "## CRL Data Update Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.check_updates.outputs.data_changed }}" == "true" ]; then
-            echo "✅ Data was updated and new release created" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Data was updated and releases created" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Release:** data-${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Stable URL (always latest):**" >> $GITHUB_STEP_SUMMARY
+            echo "\`https://github.com/${{ github.repository }}/releases/download/data-latest/crl_explorer.duckdb\`" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Database URL:**" >> $GITHUB_STEP_SUMMARY
-            echo "\`https://github.com/${{ github.repository }}/releases/download/data-${{ steps.date.outputs.date }}/crl_explorer.duckdb\`" >> $GITHUB_STEP_SUMMARY
+            echo "**This version:** data-${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "ℹ️ No FDA data changes detected - skipped update" >> $GITHUB_STEP_SUMMARY
           fi
