@@ -80,10 +80,10 @@ jobs:
             exit 1
           fi
 
-      - name: Get current date for release tag
+      - name: Get current date for release tag (EST)
         if: steps.check_updates.outputs.data_changed == 'true'
         id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        run: echo "date=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release with database
         if: steps.check_updates.outputs.data_changed == 'true'
