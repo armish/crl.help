@@ -152,11 +152,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trigger deployment
-        if: steps.check_updates.outputs.data_changed == 'true' && secrets.DEPLOY_HOOK_URL != ''
+        if: steps.check_updates.outputs.data_changed == 'true'
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
         run: |
-          echo "Triggering deployment..."
-          curl -sf -X POST "${{ secrets.DEPLOY_HOOK_URL }}" || echo "Warning: Deploy hook failed"
-          echo "Deployment triggered successfully"
+          if [ -n "$DEPLOY_HOOK_URL" ]; then
+            echo "Triggering deployment..."
+            curl -sf -X POST "$DEPLOY_HOOK_URL" && echo "Deployment triggered successfully" || echo "Warning: Deploy hook failed"
+          else
+            echo "No deploy hook configured, skipping"
+          fi
 
       - name: Summary
         run: |
