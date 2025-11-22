@@ -148,6 +148,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Trigger deployment
+        if: steps.check_updates.outputs.data_changed == 'true' && secrets.DEPLOY_HOOK_URL != ''
+        run: |
+          echo "Triggering deployment..."
+          curl -sf -X POST "${{ secrets.DEPLOY_HOOK_URL }}" || echo "Warning: Deploy hook failed"
+          echo "Deployment triggered successfully"
+
       - name: Summary
         run: |
           echo "## CRL Data Update Summary" >> $GITHUB_STEP_SUMMARY
@@ -159,6 +166,8 @@ jobs:
             echo "\`https://github.com/${{ github.repository }}/releases/download/data-latest/crl_explorer.duckdb\`" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**This version:** data-${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🚀 Deployment triggered" >> $GITHUB_STEP_SUMMARY
           else
             echo "ℹ️ No FDA data changes detected - skipped update" >> $GITHUB_STEP_SUMMARY
           fi
