@@ -196,6 +196,17 @@ python classify_crl_tx_category.py       # ~3 minutes
 python set_last_update.py                # <1 minute
 ```
 
+### Comparing Database Snapshots
+
+To compare two database snapshots and list new CRL additions:
+
+```bash
+cd backend
+python compare_snapshots.py <old_db_path> <new_db_path>
+```
+
+This outputs a formatted list of new entries with dates, application numbers, company names, deficiency reasons, and crl.help URLs.
+
 ### Environment Variables
 
 The application can be configured with these environment variables:
