@@ -1,3 +1,5 @@
+
+
 # crl.help
 
 [![Backend Tests](https://github.com/armish/crl.help/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/armish/crl.help/actions/workflows/backend-tests.yml)
@@ -33,7 +35,7 @@ For detailed Docker instructions including Docker Compose, environment variables
 
 #### Prerequisites
 
-- Python 3.9+ (for backend)
+- Python 3.10+ (for backend)
 - Node.js 18+ (for frontend)
 - DuckDB (installed automatically)
 
@@ -214,6 +216,8 @@ The application can be configured with these environment variables:
 **Backend:**
 - `DATABASE_PATH`: Path to DuckDB database (default: `data/crl.duckdb`)
 - `OPENAI_API_KEY`: OpenAI API key for AI features (required for data ingestion)
+- `LOG_LEVEL`: Logging level (default: `INFO`)
+- `CORS_ORIGINS`: Comma-separated list of allowed CORS origins
 
 **Frontend:**
 - `VITE_API_BASE_URL`: Backend API URL (default: `http://localhost:8000`)
