@@ -10,7 +10,10 @@
 # Testing Dependencies
 apscheduler>=3.10.4
 coverage[toml]>=7.3.2
-duckdb>=0.9.2
+# DuckDB is pinned EXACTLY: the data workflow writes crl_explorer.duckdb and the
+# deployed service reads it, and DuckDB's on-disk format is not forward-compatible
+# across minor/major releases. Bump this in lockstep with an image rebuild.
+duckdb==1.5.6
 fastapi>=0.104.1
 httpx>=0.25.1
 numpy>=1.26.2

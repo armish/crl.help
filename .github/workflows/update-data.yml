@@ -40,6 +40,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+          python -c "import duckdb; print(f'DuckDB {duckdb.__version__}')"
 
       - name: Check for FDA data updates
         id: check_updates
