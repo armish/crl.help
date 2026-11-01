@@ -195,7 +195,21 @@ volumes:
 The container includes a health check that verifies:
 - Nginx is running
 - Backend API is responding
-- Database is accessible
+- Database contains CRLs and summaries
+
+Use `/health` as the deployment health-check path (including on Render).
+`/api/health` is an alias. Both return HTTP 503 if data is missing or the
+database cannot be queried; an empty database is never deployment-ready.
+
+Startup downloads into a temporary file, retries transient failures, and checks
+the snapshot with the installed DuckDB reader before atomically replacing the
+database. Failed downloads or invalid snapshots stop startup and leave the
+previous database file untouched. Without `DATABASE_URL`, a valid mounted
+snapshot is required. For a new local database, run ingestion before starting
+the web service.
+
+Relative `DATABASE_PATH` values resolve from `/app/backend` for both startup
+and the API. The startup log prints the resolved path and validated counts.
 
 View health status:
 
