@@ -17,6 +17,11 @@ permissions:
   contents: write
   actions: read
 
+# Serialize scheduled/manual runs while they replace the shared latest asset.
+concurrency:
+  group: crl-data-release
+  cancel-in-progress: false
+
 env:
   PYTHON_VERSION: '3.11'
 
@@ -42,6 +47,14 @@ jobs:
           pip install -r requirements.txt
           python -c "import duckdb; print(f'DuckDB {duckdb.__version__}')"
 
+      - name: Restore previous snapshot for change detection
+        if: inputs.force_update != true
+        working-directory: backend
+        env:
+          DATABASE_PATH: data/crl_explorer.duckdb
+          DATABASE_URL: https://github.com/${{ github.repository }}/releases/download/data-latest/crl_explorer.duckdb
+        run: python prepare_database.py
+
       - name: Check for FDA data updates
         id: check_updates
         working-directory: backend
@@ -54,13 +67,13 @@ jobs:
             echo "data_changed=true" >> $GITHUB_OUTPUT
           else
             # Check if data has changed (exit 0 = changed, exit 1 = no change)
-            if python check_for_updates.py; then
-              echo "FDA data has changed"
-              echo "data_changed=true" >> $GITHUB_OUTPUT
-            else
-              echo "No FDA data changes detected"
-              echo "data_changed=false" >> $GITHUB_OUTPUT
-            fi
+            status=0
+            python check_for_updates.py || status=$?
+            case "$status" in
+              0) echo "data_changed=true" >> "$GITHUB_OUTPUT" ;;
+              1) echo "data_changed=false" >> "$GITHUB_OUTPUT" ;;
+              *) echo "FDA update check failed"; exit "$status" ;;
+            esac
           fi
 
       - name: Run data ingestion pipeline
@@ -72,17 +85,11 @@ jobs:
           echo "Starting full data ingestion pipeline..."
           python ingest_data_ci.py
 
-      - name: Verify database was created
+      - name: Validate database contents before publishing
         if: steps.check_updates.outputs.data_changed == 'true'
         working-directory: backend
         run: |
-          if [ -f "data/crl_explorer.duckdb" ]; then
-            echo "Database created successfully"
-            ls -lh data/crl_explorer.duckdb
-          else
-            echo "ERROR: Database file not found!"
-            exit 1
-          fi
+          python validate_database.py data/crl_explorer.duckdb
 
       - name: Get current date for release tag (EST)
         if: steps.check_updates.outputs.data_changed == 'true'
@@ -152,17 +159,35 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify published download before deploying
+        if: steps.check_updates.outputs.data_changed == 'true'
+        working-directory: backend
+        env:
+          DATABASE_PATH: data/published.duckdb
+          DATABASE_URL: https://github.com/${{ github.repository }}/releases/download/data-latest/crl_explorer.duckdb
+        run: |
+          python prepare_database.py
+          cmp data/crl_explorer.duckdb data/published.duckdb
+
       - name: Trigger deployment
+        id: deploy
         if: steps.check_updates.outputs.data_changed == 'true'
         env:
           DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
         run: |
           if [ -n "$DEPLOY_HOOK_URL" ]; then
             echo "Triggering deployment..."
-            curl -sf -X POST "$DEPLOY_HOOK_URL" && echo "Deployment triggered successfully" || echo "Warning: Deploy hook failed"
+            curl -sf -X POST "$DEPLOY_HOOK_URL"
+            echo "triggered=true" >> "$GITHUB_OUTPUT"
+            echo "Deployment triggered successfully"
           else
             echo "No deploy hook configured, skipping"
           fi
+
+      - name: Verify deployed data
+        if: steps.deploy.outputs.triggered == 'true'
+        working-directory: backend
+        run: python verify_deployment.py data/crl_explorer.duckdb https://crl.help
 
       - name: Summary
         run: |
@@ -176,7 +201,11 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**This version:** data-${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "🚀 Deployment triggered" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ steps.deploy.outputs.triggered }}" == "true" ]; then
+              echo "✅ Deployment data verified" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "No deploy hook configured" >> $GITHUB_STEP_SUMMARY
+            fi
           else
             echo "ℹ️ No FDA data changes detected - skipped update" >> $GITHUB_STEP_SUMMARY
           fi

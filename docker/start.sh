@@ -1,56 +1,31 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 echo "======================================"
 echo "Starting CRL.help Application"
 echo "======================================"
 
-# Download database if DATABASE_URL is provided
-if [ -n "$DATABASE_URL" ]; then
-    echo "Downloading database from: $DATABASE_URL"
+# Resolve relative DATABASE_PATH values from the API's working directory too.
+# Otherwise startup writes /app/data/... while Uvicorn reads /app/backend/data/....
+cd /app/backend
 
-    # Create data directory if it doesn't exist
-    mkdir -p /app/backend/data
-
-    # Download the database
-    if curl -L -f -o "$DATABASE_PATH" "$DATABASE_URL"; then
-        echo "✓ Database downloaded successfully to $DATABASE_PATH"
-
-        # Check file size
-        DB_SIZE=$(du -h "$DATABASE_PATH" | cut -f1)
-        echo "  Database size: $DB_SIZE"
-
-        # Set proper permissions
-        chown appuser:appuser "$DATABASE_PATH"
-        chmod 644 "$DATABASE_PATH"
-    else
-        echo "✗ Failed to download database from $DATABASE_URL"
-        echo "  Starting application without database..."
-    fi
-else
-    echo "No DATABASE_URL provided. Checking for existing database..."
-
-    if [ -f "$DATABASE_PATH" ]; then
-        DB_SIZE=$(du -h "$DATABASE_PATH" | cut -f1)
-        echo "✓ Found existing database at $DATABASE_PATH (size: $DB_SIZE)"
-    else
-        echo "⚠ Warning: No database found at $DATABASE_PATH"
-        echo "  Application will start but may not function correctly."
-        echo "  Please provide DATABASE_URL environment variable or mount a database file."
-    fi
-fi
+# A failed download or empty snapshot must fail the deployment, not create an
+# empty database that the web service can mistakenly report as healthy.
+export DATABASE_PATH="${DATABASE_PATH:-/app/backend/data/crl_explorer.duckdb}"
+python /app/backend/prepare_database.py
+chown appuser:appuser "$DATABASE_PATH" "$(dirname "$DATABASE_PATH")"
+chmod 644 "$DATABASE_PATH"
 
 echo ""
 echo "Environment Configuration:"
 echo "  DATABASE_PATH: $DATABASE_PATH"
 echo "  OPENAI_API_KEY: ${OPENAI_API_KEY:+***SET***}"
-echo "  LOG_LEVEL: $LOG_LEVEL"
-echo "  CORS_ORIGINS: $CORS_ORIGINS"
+echo "  LOG_LEVEL: ${LOG_LEVEL:-INFO}"
+echo "  CORS_ORIGINS: ${CORS_ORIGINS:-*}"
 echo ""
 
 # Verify backend is ready
 echo "Verifying backend setup..."
-cd /app/backend
 python -c "from app.config import get_settings; print('✓ Backend configuration loaded')" || {
     echo "✗ Backend configuration failed"
     exit 1

@@ -5,7 +5,7 @@ Provides REST API endpoints for browsing, searching, and
 querying FDA Complete Response Letters with AI-powered features.
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -60,8 +60,11 @@ async def lifespan(app: FastAPI):
         embedding_count = conn.execute("SELECT COUNT(*) FROM crl_embeddings").fetchone()[0]
 
         logger.info(f"Database stats: {crl_count} CRLs, {summary_count} summaries, {embedding_count} embeddings")
+        if not crl_count or not summary_count:
+            raise RuntimeError("Database has no CRLs or summaries; refusing to serve an empty dataset")
     except Exception as e:
-        logger.warning(f"Could not fetch database stats: {e}")
+        logger.error(f"Database is not ready: {e}")
+        raise
 
     logger.info("API startup complete")
 
@@ -157,7 +160,8 @@ async def root():
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
-async def health_check():
+@app.get("/api/health", response_model=HealthResponse, tags=["Health"], include_in_schema=False)
+async def health_check(response: Response):
     """
     Health check endpoint.
 
@@ -176,8 +180,12 @@ async def health_check():
         result = conn.execute("SELECT value FROM processing_metadata WHERE key = ?", ["last_data_update"]).fetchone()
         last_update = result[0] if result else None
 
+        ready = crl_count > 0 and summary_count > 0
+        if not ready:
+            response.status_code = 503
+
         return HealthResponse(
-            status="healthy",
+            status="healthy" if ready else "unhealthy",
             database="connected",
             total_crls=crl_count,
             total_summaries=summary_count,
@@ -186,6 +194,7 @@ async def health_check():
         )
     except Exception as e:
         logger.error(f"Health check failed: {e}")
+        response.status_code = 503
         return HealthResponse(
             status="unhealthy",
             database="error",

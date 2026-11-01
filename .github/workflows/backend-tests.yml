@@ -4,10 +4,14 @@ on:
   push:
     paths:
       - 'backend/**'
+      - 'docker/**'
+      - '.github/workflows/update-data.yml'
       - '.github/workflows/backend-tests.yml'
   pull_request:
     paths:
       - 'backend/**'
+      - 'docker/**'
+      - '.github/workflows/update-data.yml'
       - '.github/workflows/backend-tests.yml'
 
 jobs:

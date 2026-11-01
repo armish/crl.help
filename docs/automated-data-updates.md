@@ -181,3 +181,22 @@ All database versions are preserved as GitHub Releases:
 - **Storage:** GitHub Releases are free for public repositories
 
 Since FDA data changes infrequently (typically weekly or less), the actual cost is minimal.
+
+## Release and deployment validation
+
+Each normal run restores `data-latest` before comparing the FDA hash, so a fresh
+runner can detect unchanged data. A failed update check fails the job instead
+of reporting “no change.” Use `force_update` for a first release or to recover
+from an unreadable previous snapshot.
+
+Before publishing, `backend/validate_database.py` opens the snapshot read-only
+with the pinned service DuckDB version and checks the listing schema, nonempty
+CRLs and summaries, and update metadata. After publishing, the workflow
+downloads the public `data-latest` URL and compares its bytes with the validated
+snapshot. Runs are serialized to avoid overlapping replacement of that asset.
+
+When `DEPLOY_HOOK_URL` is configured, a hook failure fails the job. The workflow
+then waits up to 15 minutes for `https://crl.help/health` and `/api/crls` to serve
+the expected counts, update date, and a nonempty listing. A successful hook
+response alone does not count as a successful deployment. Configure Render's
+health-check path to `/health` so an empty instance cannot replace a healthy one.
